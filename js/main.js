@@ -112,9 +112,52 @@ cards.forEach(card => {
    HERO DEPTH PARALLAX
    ========================================= */
 
+/* =========================================
+   3D HERO FOOD MOVEMENT
+========================================= */
+
 const hero = document.querySelector('.hero');
 const heroContent = document.querySelector('.hero-content');
+const heroFood = document.querySelector('.hero-food-layer');
 
+if (hero) {
+
+  hero.addEventListener('mousemove', event => {
+
+    const x = (event.clientX / window.innerWidth - 0.5) * 2;
+    const y = (event.clientY / window.innerHeight - 0.5) * 2;
+
+    /* Text moves gently */
+    if (heroContent) {
+      heroContent.style.transform =
+        `translate3d(${x * 8}px, ${y * 8}px, 0)`;
+    }
+
+    /* Food moves much more — creating depth */
+    if (heroFood) {
+      heroFood.style.transform =
+        `translate3d(${x * 28}px, calc(-50% + ${y * 20}px), 35px)
+         rotateY(${-12 + x * 8}deg)
+         rotateX(${5 - y * 6}deg)`;
+    }
+
+  });
+
+  hero.addEventListener('mouseleave', () => {
+
+    if (heroContent) {
+      heroContent.style.transform =
+        'translate3d(0,0,0)';
+    }
+
+    if (heroFood) {
+      heroFood.style.transform =
+        'translateY(-50%) rotateY(-12deg) rotateX(5deg)';
+    }
+
+  });
+
+}
 if (hero && heroContent) {
 
   hero.addEventListener('mousemove', event => {
