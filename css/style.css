@@ -1180,3 +1180,124 @@ footer a:hover{
   }
 
 }
+/* =========================================
+   3D FLOATING FOOD HERO
+========================================= */
+
+.hero{
+  perspective:1600px;
+}
+
+.hero-food-layer{
+  position:absolute;
+  z-index:1;
+  right:5%;
+  top:50%;
+  width:min(48vw,650px);
+  transform:
+    translateY(-50%)
+    rotateY(-12deg)
+    rotateX(5deg);
+  transform-style:preserve-3d;
+  pointer-events:none;
+  animation:foodFloat 5s ease-in-out infinite;
+  filter:
+    drop-shadow(0 45px 45px rgba(0,0,0,.55))
+    drop-shadow(0 10px 20px rgba(196,154,90,.15));
+}
+
+.hero-food-layer img{
+  width:100%;
+  height:auto;
+  display:block;
+  object-fit:contain;
+  mix-blend-mode:normal;
+  mask-image:linear-gradient(
+    to bottom,
+    black 88%,
+    transparent 100%
+  );
+  -webkit-mask-image:linear-gradient(
+    to bottom,
+    black 88%,
+    transparent 100%
+  );
+}
+
+.hero-food-layer:before{
+  content:"";
+  position:absolute;
+  inset:-12%;
+  border-radius:50%;
+  background:radial-gradient(
+    circle,
+    rgba(196,154,90,.18),
+    transparent 65%
+  );
+  transform:translateZ(-50px);
+  filter:blur(25px);
+  z-index:-1;
+}
+
+@keyframes foodFloat{
+
+  0%,100%{
+    transform:
+      translateY(-50%)
+      translate3d(0,0,0)
+      rotateY(-12deg)
+      rotateX(5deg);
+  }
+
+  50%{
+    transform:
+      translateY(calc(-50% - 18px))
+      translate3d(0,0,35px)
+      rotateY(-7deg)
+      rotateX(2deg);
+  }
+
+}
+
+
+/* Hero content stays in front */
+.hero-content{
+  z-index:3;
+}
+
+
+/* Desktop depth separation */
+@media(min-width:1001px){
+
+  .hero-food-layer{
+    transition:
+      transform .25s cubic-bezier(.2,.7,.2,1);
+  }
+
+}
+
+
+/* Mobile */
+@media(max-width:800px){
+
+  .hero-food-layer{
+    width:72vw;
+    right:-12%;
+    top:62%;
+    opacity:.7;
+    transform:
+      translateY(-50%)
+      rotateY(-8deg)
+      rotateX(3deg);
+  }
+
+  .hero-food-layer img{
+    max-height:430px;
+    object-fit:contain;
+  }
+
+  .hero-content{
+    z-index:4;
+  }
+
+}
