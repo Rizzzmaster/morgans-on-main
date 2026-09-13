@@ -1,14 +1,14 @@
 /* ============================================================
    MORGAN'S ON MAIN
    CINEMATIC EXPERIENCE ENGINE
-   Exact engine for current index.html
+   Version 2.0
    ============================================================ */
 
 (() => {
   "use strict";
 
   /* ============================================================
-     DOM HELPERS
+     HELPERS
   ============================================================ */
 
   const $ = (selector, scope = document) =>
@@ -27,7 +27,7 @@
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
-  const coarsePointer = window.matchMedia(
+  const touchDevice = window.matchMedia(
     "(pointer: coarse)"
   ).matches;
 
@@ -38,36 +38,37 @@
 
   const state = {
     scrollY: window.scrollY,
-    lastScrollY: window.scrollY,
+    previousScrollY: window.scrollY,
 
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
 
     mouseX: 0,
     mouseY: 0,
+
     smoothMouseX: 0,
     smoothMouseY: 0,
 
-    direction: "down",
+    cursorX: window.innerWidth / 2,
+    cursorY: window.innerHeight / 2,
 
-    raf: null,
-    resizeTimer: null,
+    direction: "down",
 
     menuIndex: 0,
     cocktailIndex: 0,
 
-    menuBusy: false,
-
-    loaderFinished: false,
-
-    cursorX: 0,
-    cursorY: 0,
+    menuLocked: false,
+    cocktailLocked: false,
 
     galleryDragging: false,
     galleryStartX: 0,
     galleryStartScroll: 0,
 
-    pageVisible: true
+    visible: true,
+
+    raf: null,
+
+    resizeTimer: null
   };
 
 
@@ -75,57 +76,73 @@
      ROOT VARIABLES
   ============================================================ */
 
-  const root = document.documentElement;
-
-  function setVar(name, value) {
-    root.style.setProperty(name, value);
-  }
-
-  function updateViewportVariables() {
+  function updateViewport() {
     state.viewportWidth = window.innerWidth;
     state.viewportHeight = window.innerHeight;
 
-    setVar(
+    document.documentElement.style.setProperty(
       "--viewport-width",
       `${state.viewportWidth}px`
     );
 
-    setVar(
+    document.documentElement.style.setProperty(
       "--viewport-height",
       `${state.viewportHeight}px`
     );
   }
 
-  updateViewportVariables();
+  updateViewport();
 
 
   /* ============================================================
-     RAF ENGINE
+     RAF
   ============================================================ */
 
   function requestFrame() {
-    if (state.raf || !state.pageVisible) return;
+    if (state.raf || !state.visible) return;
 
-    state.raf = requestAnimationFrame(frame);
+    state.raf = requestAnimationFrame(render);
   }
 
-  function frame() {
+  function render() {
     state.raf = null;
 
-    if (!state.pageVisible) return;
+    if (!state.visible) return;
 
     state.scrollY = window.scrollY;
 
-    updateGlobalProgress();
+    updateScrollDirection();
+    updateGlobalScroll();
     updateHeader();
     updateHero();
-    updateDepth();
+    updatePointerDepth();
     updateTable();
     updateDinner();
     updateEvents();
     updateVisit();
     updateGallery();
     updateCursor();
+
+    if (!reducedMotion) {
+      requestFrame();
+    }
+  }
+
+
+  /* ============================================================
+     SCROLL DIRECTION
+  ============================================================ */
+
+  function updateScrollDirection() {
+    if (state.scrollY > state.previousScrollY) {
+      state.direction = "down";
+    } else if (
+      state.scrollY < state.previousScrollY
+    ) {
+      state.direction = "up";
+    }
+
+    state.previousScrollY = state.scrollY;
   }
 
 
@@ -133,24 +150,77 @@
      GLOBAL SCROLL
   ============================================================ */
 
-  function updateGlobalProgress() {
-    const documentHeight =
+  function updateGlobalScroll() {
+    const maxScroll =
       document.documentElement.scrollHeight -
       state.viewportHeight;
 
     const progress =
-      documentHeight > 0
-        ? clamp(state.scrollY / documentHeight)
+      maxScroll > 0
+        ? clamp(state.scrollY / maxScroll)
         : 0;
 
-    setVar(
+    document.documentElement.style.setProperty(
       "--scroll-progress",
-      progress.toFixed(4)
+      progress
     );
 
-    setVar(
-      "--scroll-y",
+    document.documentElement.style.setProperty(
+      "--scroll-position",
       `${state.scrollY}px`
+    );
+  }
+
+
+  /* ============================================================
+     EXPERIENCE CURTAIN
+     ONLY ONE TIMEOUT
+  ============================================================ */
+
+  function initCurtain() {
+    const curtain = $(".experience-curtain");
+
+    if (!curtain) return;
+
+    document.body.classList.add(
+      "experience-loading"
+    );
+
+    requestAnimationFrame(() => {
+      curtain.classList.add("is-ready");
+    });
+
+    const finish = () => {
+      curtain.classList.add("is-exiting");
+
+      curtain.style.pointerEvents = "none";
+
+      document.body.classList.remove(
+        "experience-loading"
+      );
+
+      document.body.classList.add(
+        "experience-ready"
+      );
+
+      /*
+        Give the CSS exit animation time to finish.
+        There is only ONE timeout for the entire loader.
+      */
+
+      setTimeout(() => {
+        curtain.classList.add("is-hidden");
+        curtain.style.display = "none";
+      }, reducedMotion ? 100 : 900);
+    };
+
+    /*
+      One single loader delay.
+    */
+
+    setTimeout(
+      finish,
+      reducedMotion ? 100 : 900
     );
   }
 
@@ -160,38 +230,38 @@
   ============================================================ */
 
   function initHeader() {
-    const header = $(".site-header");
+    const header = $("[data-header]");
 
     if (!header) return;
 
     window.addEventListener(
       "scroll",
-      () => {
-        const current = window.scrollY;
-
-        if (current > state.lastScrollY) {
-          state.direction = "down";
-        } else if (current < state.lastScrollY) {
-          state.direction = "up";
-        }
-
-        state.lastScrollY = current;
-
-        requestFrame();
-      },
+      requestFrame,
       { passive: true }
     );
   }
 
   function updateHeader() {
-    const header = $(".site-header");
+    const header = $("[data-header]");
 
     if (!header) return;
 
     header.classList.toggle(
       "is-scrolled",
-      state.scrollY > 40
+      state.scrollY > 50
     );
+
+    /*
+      Don't hide the header aggressively on mobile.
+    */
+
+    if (state.viewportWidth <= 900) {
+      header.classList.remove(
+        "is-hidden"
+      );
+
+      return;
+    }
 
     header.classList.toggle(
       "is-hidden",
@@ -208,66 +278,72 @@
 
 
   /* ============================================================
-     EXPERIENCE CURTAIN
+     MOBILE MENU
   ============================================================ */
 
-  function initCurtain() {
-    const curtain = $(".experience-curtain");
+  function initMobileMenu() {
+    const toggle =
+      $("[data-menu-toggle]");
 
-    if (!curtain) return;
+    const menu =
+      $("[data-mobile-menu]");
 
-    document.body.classList.add(
-      "experience-loading"
+    if (!toggle || !menu) return;
+
+    toggle.setAttribute(
+      "aria-expanded",
+      "false"
     );
 
-    /*
-      Allow the browser to paint the curtain first.
-    */
+    toggle.addEventListener(
+      "click",
+      () => {
+        const open =
+          document.body.classList.toggle(
+            "mobile-menu-open"
+          );
 
-    requestAnimationFrame(() => {
-      curtain.classList.add("is-ready");
-    });
-
-    /*
-      Current HTML has no enter button.
-      Therefore this becomes an automatic cinematic intro.
-    */
-
-    const finish = () => {
-      if (state.loaderFinished) return;
-
-      state.loaderFinished = true;
-
-      curtain.classList.add("is-exiting");
-
-      document.body.classList.remove(
-        "experience-loading"
-      );
-
-      document.body.classList.add(
-        "experience-ready"
-      );
-
-      window.setTimeout(() => {
-        curtain.classList.add(
-          "is-hidden"
+        toggle.setAttribute(
+          "aria-expanded",
+          String(open)
         );
-      }, reducedMotion ? 100 : 1200);
-    };
 
-    window.setTimeout(
-      finish,
-      reducedMotion ? 100 : 1800
+        toggle.setAttribute(
+          "aria-label",
+          open
+            ? "Close navigation"
+            : "Open navigation"
+        );
+      }
     );
 
-    /*
-      Absolute fallback.
-    */
+    $$("a", menu).forEach(link => {
+      link.addEventListener(
+        "click",
+        () => closeMobileMenu()
+      );
+    });
+  }
 
-    window.setTimeout(
-      finish,
-      5000
+  function closeMobileMenu() {
+    const toggle =
+      $("[data-menu-toggle]");
+
+    document.body.classList.remove(
+      "mobile-menu-open"
     );
+
+    if (toggle) {
+      toggle.setAttribute(
+        "aria-expanded",
+        "false"
+      );
+
+      toggle.setAttribute(
+        "aria-label",
+        "Open navigation"
+      );
+    }
   }
 
 
@@ -276,27 +352,27 @@
   ============================================================ */
 
   function updateHero() {
-    const hero = $(
-      '[data-scene="hero"]'
-    );
+    const hero =
+      $('[data-scene="hero"]');
 
     if (!hero) return;
 
     const rect =
       hero.getBoundingClientRect();
 
-    const progress = clamp(
-      -rect.top /
-      Math.max(rect.height, 1)
-    );
+    const progress =
+      clamp(
+        -rect.top /
+        Math.max(rect.height, 1)
+      );
 
-    setVar(
+    hero.style.setProperty(
       "--hero-progress",
-      progress.toFixed(4)
+      progress
     );
 
     /*
-      Hero backdrop.
+      Backdrop
     */
 
     const backdrop =
@@ -304,17 +380,17 @@
 
     if (backdrop) {
       const y =
-        progress * -70;
+        progress * -55;
 
       const scale =
-        1 + progress * 0.08;
+        1 + progress * 0.06;
 
       backdrop.style.transform =
         `translate3d(0, ${y}px, 0) scale(${scale})`;
     }
 
     /*
-      Atmosphere.
+      Atmosphere
     */
 
     const atmosphere =
@@ -322,28 +398,38 @@
 
     if (atmosphere) {
       atmosphere.style.transform =
-        `translate3d(0, ${progress * -35}px, 0)`;
+        `translate3d(
+          0,
+          ${progress * -30}px,
+          0
+        )`;
     }
 
     /*
-      Hero content.
+      Content
     */
 
     const content =
       $(".hero-content", hero);
 
     if (content) {
+      const y =
+        progress * -35;
+
+      const opacity =
+        clamp(
+          1 - progress * 1.15
+        );
+
       content.style.transform =
-        `translate3d(0, ${progress * -45}px, 0)`;
+        `translate3d(0, ${y}px, 0)`;
 
       content.style.opacity =
-        String(
-          clamp(1 - progress * 1.15)
-        );
+        opacity;
     }
 
     /*
-      Food scene.
+      Food
     */
 
     const food =
@@ -351,22 +437,26 @@
 
     if (food) {
       const y =
-        progress * -90;
+        progress * -65;
 
       const scale =
-        1 + progress * 0.13;
+        1 + progress * 0.08;
 
       food.style.transform =
-        `translate3d(0, ${y}px, 0) scale(${scale})`;
+        `translate3d(
+          var(--mouse-x, 0px),
+          calc(${y}px + var(--mouse-y, 0px)),
+          0
+        ) scale(${scale})`;
 
       food.style.opacity =
-        String(
-          clamp(1 - progress * 1.2)
+        clamp(
+          1 - progress * 1.25
         );
     }
 
     /*
-      Bottom interface fades.
+      Bottom text
     */
 
     const bottom =
@@ -374,19 +464,19 @@
 
     if (bottom) {
       bottom.style.opacity =
-        String(
-          clamp(1 - progress * 2)
+        clamp(
+          1 - progress * 2
         );
     }
   }
 
 
   /* ============================================================
-     POINTER PARALLAX
+     POINTER
   ============================================================ */
 
   function initPointer() {
-    if (coarsePointer) return;
+    if (touchDevice) return;
 
     window.addEventListener(
       "pointermove",
@@ -408,107 +498,116 @@
   }
 
 
-  function updatePointerSmoothing() {
-    state.smoothMouseX = lerp(
-      state.smoothMouseX,
-      state.mouseX,
-      reducedMotion ? 1 : 0.08
-    );
+  function updatePointerDepth() {
+    if (touchDevice) return;
 
-    state.smoothMouseY = lerp(
-      state.smoothMouseY,
-      state.mouseY,
-      reducedMotion ? 1 : 0.08
-    );
-  }
+    state.smoothMouseX =
+      lerp(
+        state.smoothMouseX,
+        state.mouseX,
+        0.08
+      );
 
+    state.smoothMouseY =
+      lerp(
+        state.smoothMouseY,
+        state.mouseY,
+        0.08
+      );
 
-  function updateDepth() {
-    if (coarsePointer) return;
-
-    updatePointerSmoothing();
-
-    const hero =
-      $('[data-scene="hero"]');
-
-    if (!hero) return;
-
-    const content =
-      $(".hero-content", hero);
-
-    const food =
-      $(".hero-food-scene", hero);
+    /*
+      Hero light
+    */
 
     const light =
-      $(".hero-light", hero);
-
-    if (content) {
-      content.style.transform =
-        `translate3d(
-          ${state.smoothMouseX * -12}px,
-          ${state.smoothMouseY * -8}px,
-          0
-        )`;
-    }
-
-    if (food) {
-      food.style.setProperty(
-        "--mouse-x",
-        `${state.smoothMouseX * 22}px`
-      );
-
-      food.style.setProperty(
-        "--mouse-y",
-        `${state.smoothMouseY * 18}px`
-      );
-    }
+      $("[data-cursor-light]");
 
     if (light) {
       light.style.transform =
         `translate3d(
-          ${state.smoothMouseX * 40}px,
-          ${state.smoothMouseY * 40}px,
+          ${state.smoothMouseX * 45}px,
+          ${state.smoothMouseY * 45}px,
           0
         )`;
     }
 
     /*
-      Generic data-depth layers.
+      Generic depth layers
     */
 
     $$("[data-depth]").forEach(
       element => {
         const depth =
           parseFloat(
-            element.dataset.depth || "1"
+            element.dataset.depth || 1
           );
-
-        const x =
-          state.smoothMouseX *
-          depth *
-          5;
-
-        const y =
-          state.smoothMouseY *
-          depth *
-          5;
 
         element.style.setProperty(
           "--pointer-depth-x",
-          `${x}px`
+          `${state.smoothMouseX * depth * 7}px`
         );
 
         element.style.setProperty(
           "--pointer-depth-y",
-          `${y}px`
+          `${state.smoothMouseY * depth * 7}px`
         );
       }
+    );
+
+    /*
+      Hero food custom movement
+    */
+
+    const food =
+      $(".hero-food-scene");
+
+    if (food) {
+      food.style.setProperty(
+        "--mouse-x",
+        `${state.smoothMouseX * 20}px`
+      );
+
+      food.style.setProperty(
+        "--mouse-y",
+        `${state.smoothMouseY * 16}px`
+      );
+    }
+  }
+
+
+  /* ============================================================
+     SCENE OBSERVER
+  ============================================================ */
+
+  function initScenes() {
+    const scenes =
+      $$("[data-scene]");
+
+    if (!scenes.length) return;
+
+    const observer =
+      new IntersectionObserver(
+        entries => {
+          entries.forEach(entry => {
+            entry.target.classList.toggle(
+              "is-active",
+              entry.isIntersecting
+            );
+          });
+        },
+        {
+          threshold: 0.12
+        }
+      );
+
+    scenes.forEach(scene =>
+      observer.observe(scene)
     );
   }
 
 
   /* ============================================================
-     REVEAL SYSTEM
+     REVEALS
   ============================================================ */
 
   function initReveal() {
@@ -548,44 +647,13 @@
         {
           threshold: 0.12,
           rootMargin:
-            "0px 0px -8% 0px"
+            "0px 0px -7% 0px"
         }
       );
 
     elements.forEach(
       element =>
         observer.observe(element)
-    );
-  }
-
-
-  /* ============================================================
-     SCENE ACTIVATION
-  ============================================================ */
-
-  function initScenes() {
-    const scenes =
-      $$(".scene");
-
-    if (!scenes.length) return;
-
-    const observer =
-      new IntersectionObserver(
-        entries => {
-          entries.forEach(entry => {
-            entry.target.classList.toggle(
-              "is-active",
-              entry.isIntersecting
-            );
-          });
-        },
-        {
-          threshold: 0.15
-        }
-      );
-
-    scenes.forEach(scene =>
-      observer.observe(scene)
     );
   }
 
@@ -605,66 +673,86 @@
 
     if (!items.length) return;
 
-    /*
-      Clicking a story item activates it.
-    */
-
     items.forEach(
       (item, index) => {
         item.addEventListener(
           "click",
-          () =>
+          () => {
             activateStory(
               index,
               items
-            )
+            );
+          }
         );
       }
     );
+  }
 
-    /*
-      Automatic activation based on
-      scroll position.
-    */
 
-    window.addEventListener(
-      "scroll",
-      () => {
-        const rect =
-          table.getBoundingClientRect();
+  function updateTable() {
+    const table =
+      $('[data-scene="table"]');
 
-        const progress = clamp(
-          (state.viewportHeight -
-            rect.top) /
-          (
-            state.viewportHeight +
-            rect.height
-          )
-        );
+    if (!table) return;
 
-        const index = Math.min(
-          items.length - 1,
-          Math.floor(
-            progress *
-            items.length
-          )
-        );
+    const items =
+      $$(".table-story-item", table);
 
-        activateStory(
-          index,
-          items,
-          false
-        );
-      },
-      { passive: true }
+    if (!items.length) return;
+
+    const rect =
+      table.getBoundingClientRect();
+
+    if (
+      rect.bottom < 0 ||
+      rect.top >
+      state.viewportHeight
+    ) {
+      return;
+    }
+
+    const progress =
+      clamp(
+        (
+          state.viewportHeight -
+          rect.top
+        ) /
+        (
+          state.viewportHeight +
+          rect.height
+        )
+      );
+
+    const index =
+      Math.min(
+        items.length - 1,
+        Math.floor(
+          progress * items.length
+        )
+      );
+
+    activateStory(
+      index,
+      items,
+      false
     );
+
+    const image =
+      $("[data-pinned-image]", table);
+
+    if (image) {
+      image.style.setProperty(
+        "--table-progress",
+        progress
+      );
+    }
   }
 
 
   function activateStory(
     index,
     items,
-    animate = true
+    scrollIntoView = false
   ) {
     items.forEach(
       (item, itemIndex) => {
@@ -675,63 +763,20 @@
       }
     );
 
-    if (animate) {
-      const active =
-        items[index];
-
-      active.scrollIntoView({
-        behavior:
-          reducedMotion
-            ? "auto"
-            : "smooth",
+    if (
+      scrollIntoView &&
+      !reducedMotion
+    ) {
+      items[index].scrollIntoView({
+        behavior: "smooth",
         block: "center"
       });
     }
   }
 
 
-  function updateTable() {
-    const table =
-      $('[data-scene="table"]');
-
-    if (!table) return;
-
-    const rect =
-      table.getBoundingClientRect();
-
-    if (
-      rect.bottom < -200 ||
-      rect.top >
-      state.viewportHeight + 200
-    ) {
-      return;
-    }
-
-    const image =
-      $(".table-image-wrap", table);
-
-    if (!image) return;
-
-    const progress = clamp(
-      (
-        state.viewportHeight -
-        rect.top
-      ) /
-      (
-        state.viewportHeight +
-        rect.height
-      )
-    );
-
-    image.style.setProperty(
-      "--table-progress",
-      progress.toFixed(4)
-    );
-  }
-
-
   /* ============================================================
-     MENU ENGINE
+     DISH MENU
   ============================================================ */
 
   function initMenu() {
@@ -745,10 +790,6 @@
 
     if (!dishes.length) return;
 
-    /*
-      Previous / next controls.
-    */
-
     const previous =
       $("[data-dish-prev]");
 
@@ -758,21 +799,19 @@
     if (previous) {
       previous.addEventListener(
         "click",
-        () =>
-          changeDish(-1)
+        () => changeDish(-1)
       );
     }
 
     if (next) {
       next.addEventListener(
         "click",
-        () =>
-          changeDish(1)
+        () => changeDish(1)
       );
     }
 
     /*
-      Clicking a dish activates it.
+      Clickable slides
     */
 
     dishes.forEach(
@@ -796,27 +835,28 @@
           "keydown",
           event => {
             if (
-              event.key === "Enter" ||
-              event.key === " "
+              event.key ===
+                "ArrowRight"
             ) {
               event.preventDefault();
-
-              activateDish(
-                index,
-                dishes
-              );
-            }
-
-            if (
-              event.key === "ArrowRight"
-            ) {
               changeDish(1);
             }
 
             if (
-              event.key === "ArrowLeft"
+              event.key ===
+                "ArrowLeft"
             ) {
+              event.preventDefault();
               changeDish(-1);
+            }
+
+            if (
+              event.key === "Enter"
+            ) {
+              activateDish(
+                index,
+                dishes
+              );
             }
           }
         );
@@ -824,11 +864,11 @@
     );
 
     /*
-      Touch / swipe.
+      Touch swipe
     */
 
-    let startX = 0;
-    let startY = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
 
     showcase.addEventListener(
       "touchstart",
@@ -836,8 +876,11 @@
         const touch =
           event.changedTouches[0];
 
-        startX = touch.clientX;
-        startY = touch.clientY;
+        touchStartX =
+          touch.clientX;
+
+        touchStartY =
+          touch.clientY;
       },
       { passive: true }
     );
@@ -849,57 +892,56 @@
           event.changedTouches[0];
 
         const deltaX =
-          touch.clientX - startX;
+          touch.clientX -
+          touchStartX;
 
         const deltaY =
-          touch.clientY - startY;
+          touch.clientY -
+          touchStartY;
 
         if (
-          Math.abs(deltaX) >
-            50 &&
+          Math.abs(deltaX) > 50 &&
           Math.abs(deltaX) >
             Math.abs(deltaY)
         ) {
-          if (deltaX < 0) {
-            changeDish(1);
-          } else {
-            changeDish(-1);
-          }
+          changeDish(
+            deltaX < 0 ? 1 : -1
+          );
         }
       },
       { passive: true }
     );
 
     /*
-      Wheel navigation when menu is
-      prominently visible.
+      Wheel
     */
 
-    let wheelLocked = false;
+    let wheelCooldown = false;
 
     showcase.addEventListener(
       "wheel",
       event => {
-        if (
-          wheelLocked ||
-          Math.abs(event.deltaY) <
-          Math.abs(event.deltaX)
-        ) {
-          return;
-        }
+        if (wheelCooldown) return;
 
         const rect =
           showcase.getBoundingClientRect();
 
         const visible =
           rect.top <
-            state.viewportHeight * 0.75 &&
+            state.viewportHeight * 0.8 &&
           rect.bottom >
-            state.viewportHeight * 0.25;
+            state.viewportHeight * 0.2;
 
         if (!visible) return;
 
-        wheelLocked = true;
+        if (
+          Math.abs(event.deltaY) <
+          Math.abs(event.deltaX)
+        ) {
+          return;
+        }
+
+        wheelCooldown = true;
 
         changeDish(
           event.deltaY > 0
@@ -907,11 +949,11 @@
             : -1
         );
 
-        window.setTimeout(
+        setTimeout(
           () => {
-            wheelLocked = false;
+            wheelCooldown = false;
           },
-          650
+          500
         );
       },
       { passive: true }
@@ -927,20 +969,34 @@
 
   function changeDish(direction) {
     const dishes =
-      $$(".dish-slide");
+      $$(
+        ".dish-slide"
+      );
 
     if (!dishes.length) return;
+
+    if (state.menuLocked) return;
 
     const nextIndex =
       (
         state.menuIndex +
         direction +
         dishes.length
-      ) % dishes.length;
+      ) %
+      dishes.length;
 
     activateDish(
       nextIndex,
       dishes
+    );
+
+    state.menuLocked = true;
+
+    setTimeout(
+      () => {
+        state.menuLocked = false;
+      },
+      450
     );
   }
 
@@ -950,25 +1006,7 @@
     dishes,
     animate = true
   ) {
-    if (
-      state.menuBusy &&
-      animate
-    ) {
-      return;
-    }
-
     state.menuIndex = index;
-
-    if (animate) {
-      state.menuBusy = true;
-
-      window.setTimeout(
-        () => {
-          state.menuBusy = false;
-        },
-        reducedMotion ? 100 : 600
-      );
-    }
 
     dishes.forEach(
       (dish, dishIndex) => {
@@ -978,7 +1016,9 @@
           "is-after"
         );
 
-        if (dishIndex === index) {
+        if (
+          dishIndex === index
+        ) {
           dish.classList.add(
             "is-active"
           );
@@ -993,6 +1033,51 @@
             "is-after"
           );
         }
+
+        /*
+          Useful CSS variables for
+          cinematic positioning.
+        */
+
+        let offset =
+          dishIndex - index;
+
+        if (
+          offset >
+          dishes.length / 2
+        ) {
+          offset -=
+            dishes.length;
+        }
+
+        if (
+          offset <
+          -dishes.length / 2
+        ) {
+          offset +=
+            dishes.length;
+        }
+
+        const abs =
+          Math.min(
+            Math.abs(offset),
+            3
+          );
+
+        dish.style.setProperty(
+          "--dish-offset",
+          offset
+        );
+
+        dish.style.setProperty(
+          "--dish-distance",
+          abs
+        );
+
+        dish.style.setProperty(
+          "--dish-index",
+          dishIndex
+        );
       }
     );
 
@@ -1012,18 +1097,19 @@
 
     if (!progress) return;
 
-    const amount =
-      total <= 1
-        ? 1
-        : (index + 1) / total;
+    const percentage =
+      ((index + 1) / total) * 100;
+
+    progress.style.width =
+      `${percentage}%`;
 
     progress.style.transform =
-      `scaleX(${amount})`;
+      `scaleX(1)`;
   }
 
 
   /* ============================================================
-     BAR / COCKTAIL CABINET
+     COCKTAIL CABINET
   ============================================================ */
 
   function initCocktails() {
@@ -1057,63 +1143,30 @@
           "keydown",
           event => {
             if (
-              event.key === "Enter" ||
-              event.key === " "
+              event.key === "Enter"
             ) {
-              event.preventDefault();
-
               activateCocktail(
                 index,
                 cards
               );
             }
+
+            if (
+              event.key ===
+              "ArrowRight"
+            ) {
+              changeCocktail(1);
+            }
+
+            if (
+              event.key ===
+              "ArrowLeft"
+            ) {
+              changeCocktail(-1);
+            }
           }
         );
       }
-    );
-
-    let wheelLocked = false;
-
-    cabinet.addEventListener(
-      "wheel",
-      event => {
-        if (wheelLocked) return;
-
-        const rect =
-          cabinet.getBoundingClientRect();
-
-        const visible =
-          rect.top <
-            state.viewportHeight * 0.8 &&
-          rect.bottom >
-            state.viewportHeight * 0.2;
-
-        if (!visible) return;
-
-        wheelLocked = true;
-
-        const direction =
-          event.deltaY > 0
-            ? 1
-            : -1;
-
-        activateCocktail(
-          (
-            state.cocktailIndex +
-            direction +
-            cards.length
-          ) % cards.length,
-          cards
-        );
-
-        window.setTimeout(
-          () => {
-            wheelLocked = false;
-          },
-          650
-        );
-      },
-      { passive: true }
     );
 
     activateCocktail(
@@ -1124,10 +1177,41 @@
   }
 
 
+  function changeCocktail(direction) {
+    const cards =
+      $$(".cocktail-card");
+
+    if (!cards.length) return;
+
+    if (state.cocktailLocked) return;
+
+    const nextIndex =
+      (
+        state.cocktailIndex +
+        direction +
+        cards.length
+      ) %
+      cards.length;
+
+    activateCocktail(
+      nextIndex,
+      cards
+    );
+
+    state.cocktailLocked = true;
+
+    setTimeout(
+      () => {
+        state.cocktailLocked = false;
+      },
+      500
+    );
+  }
+
+
   function activateCocktail(
     index,
-    cards,
-    animate = true
+    cards
   ) {
     state.cocktailIndex = index;
 
@@ -1139,7 +1223,9 @@
           "is-after"
         );
 
-        if (cardIndex === index) {
+        if (
+          cardIndex === index
+        ) {
           card.classList.add(
             "is-active"
           );
@@ -1154,6 +1240,14 @@
             "is-after"
           );
         }
+
+        let offset =
+          cardIndex - index;
+
+        card.style.setProperty(
+          "--cocktail-offset",
+          offset
+        );
       }
     );
   }
@@ -1170,21 +1264,21 @@
     if (!gallery) return;
 
     /*
-      Pointer drag.
+      Mouse / pointer drag
     */
 
     gallery.addEventListener(
       "pointerdown",
       event => {
         if (
-          event.pointerType ===
-          "mouse" &&
+          event.pointerType === "mouse" &&
           event.button !== 0
         ) {
           return;
         }
 
         state.galleryDragging = true;
+
         state.galleryStartX =
           event.clientX;
 
@@ -1222,7 +1316,7 @@
       }
     );
 
-    const stopDrag = () => {
+    const stopGalleryDrag = () => {
       state.galleryDragging = false;
 
       gallery.classList.remove(
@@ -1232,22 +1326,19 @@
 
     gallery.addEventListener(
       "pointerup",
-      stopDrag
+      stopGalleryDrag
     );
 
     gallery.addEventListener(
       "pointercancel",
-      stopDrag
+      stopGalleryDrag
     );
 
     gallery.addEventListener(
       "pointerleave",
-      event => {
-        if (
-          event.pointerType ===
-          "mouse"
-        ) {
-          stopDrag();
+      () => {
+        if (!touchDevice) {
+          stopGalleryDrag();
         }
       }
     );
@@ -1271,20 +1362,26 @@
     if (
       rect.bottom < -100 ||
       rect.top >
-      state.viewportHeight + 100
+        state.viewportHeight + 100
     ) {
       return;
     }
 
-    const progress = clamp(
-      (
-        state.viewportHeight -
-        rect.top
-      ) /
-      (
-        state.viewportHeight +
-        rect.height
-      )
+    const progress =
+      clamp(
+        (
+          state.viewportHeight -
+          rect.top
+        ) /
+        (
+          state.viewportHeight +
+          rect.height
+        )
+      );
+
+    gallery.style.setProperty(
+      "--gallery-progress",
+      progress
     );
 
     frames.forEach(
@@ -1297,11 +1394,10 @@
 
         const movement =
           (
-            progress -
-            0.5
+            progress - 0.5
           ) *
           depth *
-          12;
+          20;
 
         frame.style.setProperty(
           "--gallery-depth-y",
@@ -1325,16 +1421,25 @@
     const rect =
       dinner.getBoundingClientRect();
 
-    const progress = clamp(
-      (
-        state.viewportHeight -
-        rect.top
-      ) /
-      (
-        state.viewportHeight +
-        rect.height
-      )
-    );
+    if (
+      rect.bottom < 0 ||
+      rect.top >
+        state.viewportHeight
+    ) {
+      return;
+    }
+
+    const progress =
+      clamp(
+        (
+          state.viewportHeight -
+          rect.top
+        ) /
+        (
+          state.viewportHeight +
+          rect.height
+        )
+      );
 
     const image =
       $(".dinner-image", dinner);
@@ -1344,39 +1449,36 @@
 
     if (image) {
       const scale =
-        lerp(
-          1.16,
-          1,
-          progress
-        );
+        1.12 -
+        progress * 0.12;
 
       const y =
-        lerp(
-          80,
-          0,
-          progress
-        );
+        45 -
+        progress * 45;
 
       image.style.transform =
-        `translate3d(0, ${y}px, 0) scale(${scale})`;
+        `translate3d(
+          0,
+          ${y}px,
+          0
+        ) scale(${scale})`;
     }
 
     if (content) {
       const y =
-        lerp(
-          70,
-          0,
-          progress
-        );
+        50 -
+        progress * 50;
 
       content.style.transform =
-        `translate3d(0, ${y}px, 0)`;
+        `translate3d(
+          0,
+          ${y}px,
+          0
+        )`;
 
       content.style.opacity =
-        String(
-          clamp(
-            progress * 1.7
-          )
+        clamp(
+          progress * 1.7
         );
     }
   }
@@ -1392,37 +1494,40 @@
 
     if (!section) return;
 
-    const image =
-      $(".events-image", section);
-
-    if (!image) return;
-
     const rect =
       section.getBoundingClientRect();
 
     if (
       rect.bottom < 0 ||
       rect.top >
-      state.viewportHeight
+        state.viewportHeight
     ) {
       return;
     }
 
-    const progress = clamp(
-      (
-        state.viewportHeight -
-        rect.top
-      ) /
-      (
-        state.viewportHeight +
-        rect.height
-      )
-    );
+    const progress =
+      clamp(
+        (
+          state.viewportHeight -
+          rect.top
+        ) /
+        (
+          state.viewportHeight +
+          rect.height
+        )
+      );
 
-    image.style.transform =
-      `translate3d(0, ${
-        (progress - 0.5) * -60
-      }px, 0) scale(1.08)`;
+    const image =
+      $(".events-image", section);
+
+    if (image) {
+      image.style.transform =
+        `translate3d(
+          0,
+          ${(progress - 0.5) * -50}px,
+          0
+        ) scale(1.05)`;
+    }
   }
 
 
@@ -1436,37 +1541,40 @@
 
     if (!section) return;
 
-    const background =
-      $(".visit-background", section);
-
-    if (!background) return;
-
     const rect =
       section.getBoundingClientRect();
 
     if (
       rect.bottom < 0 ||
       rect.top >
-      state.viewportHeight
+        state.viewportHeight
     ) {
       return;
     }
 
-    const progress = clamp(
-      (
-        state.viewportHeight -
-        rect.top
-      ) /
-      (
-        state.viewportHeight +
-        rect.height
-      )
-    );
+    const progress =
+      clamp(
+        (
+          state.viewportHeight -
+          rect.top
+        ) /
+        (
+          state.viewportHeight +
+          rect.height
+        )
+      );
 
-    background.style.transform =
-      `translate3d(0, ${
-        (progress - 0.5) * -50
-      }px, 0) scale(1.06)`;
+    const background =
+      $(".visit-background", section);
+
+    if (background) {
+      background.style.transform =
+        `translate3d(
+          0,
+          ${(progress - 0.5) * -40}px,
+          0
+        ) scale(1.05)`;
+    }
   }
 
 
@@ -1475,7 +1583,7 @@
   ============================================================ */
 
   function initMagneticButtons() {
-    if (coarsePointer) return;
+    if (touchDevice) return;
 
     const buttons =
       $$("[data-magnetic]");
@@ -1497,13 +1605,10 @@
             rect.top -
             rect.height / 2;
 
-          const strength =
-            0.16;
-
           button.style.transform =
             `translate3d(
-              ${x * strength}px,
-              ${y * strength}px,
+              ${x * 0.14}px,
+              ${y * 0.14}px,
               0
             )`;
         }
@@ -1525,7 +1630,7 @@
   ============================================================ */
 
   function initCursor() {
-    if (coarsePointer) return;
+    if (touchDevice) return;
 
     const cursor =
       $(".cursor-system");
@@ -1571,28 +1676,36 @@
 
 
   function updateCursor() {
-    if (coarsePointer) return;
+    if (touchDevice) return;
 
     const cursor =
       $(".cursor-system");
 
     if (!cursor) return;
 
-    state.cursorX = lerp(
-      state.cursorX,
+    const targetX =
       state.mouseX *
-        state.viewportWidth +
-        state.viewportWidth / 2,
-      0.18
-    );
+      state.viewportWidth +
+      state.viewportWidth / 2;
 
-    state.cursorY = lerp(
-      state.cursorY,
+    const targetY =
       state.mouseY *
-        state.viewportHeight +
-        state.viewportHeight / 2,
-      0.18
-    );
+      state.viewportHeight +
+      state.viewportHeight / 2;
+
+    state.cursorX =
+      lerp(
+        state.cursorX,
+        targetX,
+        0.16
+      );
+
+    state.cursorY =
+      lerp(
+        state.cursorY,
+        targetY,
+        0.16
+      );
 
     cursor.style.transform =
       `translate3d(
@@ -1600,69 +1713,6 @@
         ${state.cursorY}px,
         0
       )`;
-  }
-
-
-  /* ============================================================
-     MOBILE NAVIGATION
-  ============================================================ */
-
-  function initMobileNavigation() {
-    const toggle =
-      $("[data-menu-toggle]");
-
-    const menu =
-      $("[data-mobile-menu]");
-
-    if (!toggle || !menu) return;
-
-    toggle.addEventListener(
-      "click",
-      () => {
-        const isOpen =
-          document.body.classList.toggle(
-            "mobile-menu-open"
-          );
-
-        toggle.setAttribute(
-          "aria-expanded",
-          isOpen
-            ? "true"
-            : "false"
-        );
-
-        toggle.setAttribute(
-          "aria-label",
-          isOpen
-            ? "Close navigation"
-            : "Open navigation"
-        );
-      }
-    );
-
-    $$(
-      "a",
-      menu
-    ).forEach(link => {
-      link.addEventListener(
-        "click",
-        () => {
-          document.body.classList.remove(
-            "mobile-menu-open"
-          );
-
-          toggle.setAttribute(
-            "aria-expanded",
-            "false"
-          );
-
-          toggle.setAttribute(
-            "aria-label",
-            "Open navigation"
-          );
-        }
-      );
-    });
   }
 
 
@@ -1712,135 +1762,30 @@
 
 
   /* ============================================================
-     IMAGE LOAD STATES
+     KEYBOARD
   ============================================================ */
 
-  function initImages() {
-    const images =
-      $$("img");
-
-    images.forEach(
-      image => {
-        image.setAttribute(
-          "decoding",
-          "async"
-        );
-
-        if (
-          image.complete
-        ) {
-          image.classList.add(
-            "is-loaded"
-          );
-          return;
-        }
-
-        image.addEventListener(
-          "load",
-          () => {
-            image.classList.add(
-              "is-loaded"
-            );
-          },
-          { once: true }
-        );
-
-        image.addEventListener(
-          "error",
-          () => {
-            image.classList.add(
-              "is-error"
-            );
-          },
-          { once: true }
-        );
-      }
-    );
-  }
-
-
-  /* ============================================================
-     RESIZE
-  ============================================================ */
-
-  function initResize() {
-    window.addEventListener(
-      "resize",
-      () => {
-        clearTimeout(
-          state.resizeTimer
-        );
-
-        state.resizeTimer =
-          setTimeout(() => {
-            updateViewportVariables();
-            requestFrame();
-          }, 120);
-      },
-      { passive: true }
-    );
-  }
-
-
-  /* ============================================================
-     PAGE VISIBILITY
-  ============================================================ */
-
-  function initVisibility() {
-    document.addEventListener(
-      "visibilitychange",
-      () => {
-        state.pageVisible =
-          !document.hidden;
-
-        if (state.pageVisible) {
-          requestFrame();
-        }
-      }
-    );
-  }
-
-
-  /* ============================================================
-     ESCAPE
-  ============================================================ */
-
-  function initEscape() {
+  function initKeyboard() {
     document.addEventListener(
       "keydown",
       event => {
         if (
-          event.key !== "Escape"
+          event.key === "Escape"
+        ) {
+          closeMobileMenu();
+        }
+
+        /*
+          Menu keyboard navigation
+        */
+
+        if (
+          event.key !== "ArrowLeft" &&
+          event.key !== "ArrowRight"
         ) {
           return;
         }
 
-        document.body.classList.remove(
-          "mobile-menu-open"
-        );
-
-        const toggle =
-          $("[data-menu-toggle]");
-
-        if (toggle) {
-          toggle.setAttribute(
-            "aria-expanded",
-            "false"
-          );
-        }
-      }
-    );
-  }
-
-
-  /* ============================================================
-     KEYBOARD MENU
-  ============================================================ */
-
-  function initGlobalMenuKeyboard() {
-    document.addEventListener(
-      "keydown",
-      event => {
         const menu =
           $('[data-scene="menu"]');
 
@@ -1857,15 +1802,15 @@
         if (!visible) return;
 
         if (
-          event.key === "ArrowRight"
-        ) {
-          changeDish(1);
-        }
-
-        if (
           event.key === "ArrowLeft"
         ) {
           changeDish(-1);
+        }
+
+        if (
+          event.key === "ArrowRight"
+        ) {
+          changeDish(1);
         }
       }
     );
@@ -1873,21 +1818,96 @@
 
 
   /* ============================================================
-     INITIALIZATION
+     IMAGES
+  ============================================================ */
+
+  function initImages() {
+    const images =
+      $$("img");
+
+    images.forEach(image => {
+      image.setAttribute(
+        "decoding",
+        "async"
+      );
+
+      if (image.complete) {
+        image.classList.add(
+          "is-loaded"
+        );
+
+        return;
+      }
+
+      image.addEventListener(
+        "load",
+        () => {
+          image.classList.add(
+            "is-loaded"
+          );
+        },
+        { once: true }
+      );
+    });
+  }
+
+
+  /* ============================================================
+     RESIZE
+  ============================================================ */
+
+  function initResize() {
+    window.addEventListener(
+      "resize",
+      () => {
+        clearTimeout(
+          state.resizeTimer
+        );
+
+        state.resizeTimer =
+          setTimeout(
+            () => {
+              updateViewport();
+              requestFrame();
+            },
+            100
+          );
+      },
+      { passive: true }
+    );
+  }
+
+
+  /* ============================================================
+     VISIBILITY
+  ============================================================ */
+
+  function initVisibility() {
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        state.visible =
+          !document.hidden;
+
+        if (state.visible) {
+          requestFrame();
+        }
+      }
+    );
+  }
+
+
+  /* ============================================================
+     INITIALIZE
   ============================================================ */
 
   function init() {
-
-    /*
-      Base state
-    */
-
     document.body.classList.add(
       "js-enabled"
     );
 
     /*
-      Experience
+      Loader
     */
 
     initCurtain();
@@ -1897,12 +1917,12 @@
     */
 
     initHeader();
-    initMobileNavigation();
+    initMobileMenu();
     initSmoothLinks();
-    initEscape();
+    initKeyboard();
 
     /*
-      Scenes
+      Scene system
     */
 
     initScenes();
@@ -1921,11 +1941,10 @@
     initTableStory();
 
     /*
-      Menu
+      Food / menu
     */
 
     initMenu();
-    initGlobalMenuKeyboard();
 
     /*
       Bar
@@ -1940,27 +1959,17 @@
     initGallery();
 
     /*
-      Buttons
+      Interaction
     */
 
     initMagneticButtons();
-
-    /*
-      Cursor
-    */
-
     initCursor();
 
     /*
-      Images
+      Images / browser
     */
 
     initImages();
-
-    /*
-      Browser state
-    */
-
     initResize();
     initVisibility();
 
@@ -1971,27 +1980,21 @@
     requestFrame();
 
     /*
-      Recalculate after fonts/images
-      have settled.
+      Re-render once after initial
+      browser layout settles.
     */
 
-    window.setTimeout(
-      requestFrame,
-      300
-    );
-
-    window.setTimeout(
-      requestFrame,
-      1000
-    );
+    requestAnimationFrame(() => {
+      requestFrame();
+    });
 
     console.log(
       "%c MORGAN'S ON MAIN ",
-      "background:#111;color:#f2eadf;padding:8px 12px;font-weight:700;"
+      "background:#111;color:#f5eee5;padding:8px 14px;font-weight:bold;"
     );
 
     console.log(
-      "%c Cinematic Experience Engine — ONLINE ",
+      "%c CINEMATIC EXPERIENCE ENGINE ",
       "color:#888;"
     );
   }
