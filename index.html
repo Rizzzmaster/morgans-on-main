@@ -92,6 +92,19 @@
   .nav-order:hover, .nav-order:focus-visible{ background:var(--cream); color:var(--char); }
   .nav-toggle{ display:none; background:none; border:0; color:var(--cream); font-size:1.4rem; cursor:pointer; }
 
+  .scroll-progress{
+    position:fixed; top:0; left:0; right:0; height:2px; z-index:110;
+    background:var(--line); transform-origin:left center;
+  }
+  .scroll-progress::after{ content:none; }
+  #scrollProgress{
+    position:fixed; top:0; left:0; width:100%; height:2px; z-index:110;
+    background:linear-gradient(90deg, var(--ember), var(--brass));
+    transform:scaleX(0); transform-origin:left center;
+  }
+
+  .magnetic{ display:inline-block; will-change:transform; }
+
   @media (max-width:760px){
     .nav-links{
       position:fixed; top:0; right:0; height:100vh; width:min(78vw,320px);
@@ -181,7 +194,16 @@
   .dish-main{
     position:relative; width:min(46vw,360px); aspect-ratio:448/684;
     border-radius:6px; overflow:hidden; transform-style:preserve-3d;
-    box-shadow:0 40px 90px rgba(0,0,0,0.55);
+    box-shadow:
+      0 10px 30px rgba(0,0,0,0.35),
+      0 40px 90px rgba(0,0,0,0.55),
+      0 0 120px rgba(196,98,45,0.18);
+  }
+  .dish-glow{
+    position:absolute; top:50%; left:50%; width:min(70vw,560px); aspect-ratio:1/1;
+    transform:translate(-50%,-50%); z-index:-1; pointer-events:none;
+    background:radial-gradient(circle, rgba(196,98,45,0.32), transparent 65%);
+    filter:blur(40px);
   }
   .dish-main img{ width:100%; height:100%; object-fit:cover; display:block; }
   .dish-chip{
@@ -386,6 +408,7 @@
 <body>
 
 <div class="grain"></div>
+<div id="scrollProgress"></div>
 
 <nav class="nav" id="siteNav">
   <div class="nav-mark">MORGAN'S ON MAIN</div>
@@ -396,7 +419,7 @@
     <a href="#bar">Bar</a>
     <a href="#events">Events</a>
     <a href="#contact">Contact</a>
-    <a class="nav-order" href="#" id="orderBtn">Order</a>
+    <a class="nav-order magnetic" href="#" id="orderBtn">Order</a>
   </div>
 </nav>
 
@@ -428,6 +451,7 @@
       <h2>Built to fall apart.<br>Built to come back together.</h2>
     </div>
     <div class="dish-scene" id="dishScene">
+      <div class="dish-glow"></div>
       <div class="dish-main" id="dishMain">
         <img src="assets/ahi-poke-nachos-enhanced.jpg" alt="Ahi Poke Nachos at Morgan's On Main">
       </div>
@@ -523,7 +547,7 @@
 
 <!-- ================= POWER CTA ================= -->
 <section class="power">
-  <button class="power-btn" id="powerBtn">
+  <button class="power-btn magnetic" id="powerBtn">
     <span class="power-btn-label">Power<br>your table</span>
   </button>
   <p>One tap to start an order for pickup or delivery.</p>
@@ -571,8 +595,8 @@
   <h2>Your table is waiting.</h2>
   <div class="final-mark">MORGAN'S ON MAIN — WOODLAND, CALIFORNIA</div>
   <div class="final-actions">
-    <a class="btn-solid" href="#" id="finalOrderBtn">Order online</a>
-    <a class="btn-outline" href="menu.html">View menu</a>
+    <a class="btn-solid magnetic" href="#" id="finalOrderBtn">Order online</a>
+    <a class="btn-outline magnetic" href="menu.html">View menu</a>
   </div>
 </section>
 
@@ -583,10 +607,33 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lenis/1.1.13/lenis.min.js"></script>
 <script>
 gsap.registerPlugin(ScrollTrigger);
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Lenis: buttery momentum smooth-scroll ---------- */
+let lenis;
+if (!reduceMotion && window.Lenis) {
+  lenis = new Lenis({
+    duration: 1.15,
+    easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    smoothWheel: true,
+    touchMultiplier: 1.4
+  });
+  lenis.on('scroll', ScrollTrigger.update);
+  gsap.ticker.add((time) => lenis.raf(time * 1000));
+  gsap.ticker.lagSmoothing(0);
+}
+
+/* ---------- Scroll progress bar ---------- */
+const progressBar = document.getElementById('scrollProgress');
+ScrollTrigger.create({
+  start: 0,
+  end: () => document.documentElement.scrollHeight - window.innerHeight,
+  onUpdate: self => { if (progressBar) progressBar.style.transform = `scaleX(${self.progress})`; }
+});
 
 /* ---------- Nav ---------- */
 const nav = document.getElementById('siteNav');
@@ -626,6 +673,31 @@ if (!reduceMotion) {
     y: -40,
     scrollTrigger: { trigger: '#top', start: 'top top', end: 'bottom top', scrub: 0.4 }
   });
+
+  /* ---------- Hero: subtle cursor-linked parallax ---------- */
+  const heroContent = document.querySelector('.hero-content');
+  if (heroContent && window.matchMedia('(pointer:fine)').matches) {
+    document.getElementById('top').addEventListener('mousemove', e => {
+      const cx = (e.clientX / window.innerWidth - 0.5) * 2;
+      const cy = (e.clientY / window.innerHeight - 0.5) * 2;
+      gsap.to(heroContent, { x: cx * 14, y: cy * 10, duration: 0.8, ease: 'power2.out' });
+    });
+  }
+
+  /* ---------- Magnetic buttons: pull toward cursor on hover ---------- */
+  if (window.matchMedia('(pointer:fine)').matches) {
+    document.querySelectorAll('.magnetic').forEach(btn => {
+      btn.addEventListener('mousemove', e => {
+        const r = btn.getBoundingClientRect();
+        const mx = e.clientX - (r.left + r.width / 2);
+        const my = e.clientY - (r.top + r.height / 2);
+        gsap.to(btn, { x: mx * 0.35, y: my * 0.35, duration: 0.4, ease: 'power2.out' });
+      });
+      btn.addEventListener('mouseleave', () => {
+        gsap.to(btn, { x: 0, y: 0, duration: 0.6, ease: 'elastic.out(1,0.4)' });
+      });
+    });
+  }
 
   /* ---------- Real dish scene: photo-based depth + garnish chips ---------- */
   initDishScene();
@@ -696,12 +768,15 @@ if (!reduceMotion) {
     }
   });
 
-  /* ---------- Generic reveals ---------- */
+  /* ---------- Generic reveals — with subtle 3D depth ---------- */
   gsap.utils.toArray('[data-reveal]').forEach(el => {
-    gsap.fromTo(el, { opacity: 0, y: 32 }, {
-      opacity: 1, y: 0, duration: 1, ease: 'power2.out',
-      scrollTrigger: { trigger: el, start: 'top 85%' }
-    });
+    gsap.fromTo(el,
+      { opacity: 0, y: 40, rotateX: 6, transformPerspective: 900, transformOrigin: '50% 100%' },
+      {
+        opacity: 1, y: 0, rotateX: 0, duration: 1.1, ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 85%' }
+      }
+    );
   });
 
   /* ---------- Story parallax ---------- */
