@@ -1,745 +1,707 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morgan's On Main — Woodland, California</title>
+<meta name="description" content="Morgan's On Main. California comfort grill in downtown Woodland, Yolo County.">
 
-    <title>Morgan's On Main — Woodland, California</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,ital@9..144,300..700,0..1&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <meta
-        name="description"
-        content="Morgan's On Main — California Comfort Grill in downtown Woodland, California."
-    >
+<style>
+  :root{
+    --char:      #16130f;
+    --char-2:    #1f1b14;
+    --cream:     #f3ead8;
+    --cream-dim: #e6dcc6;
+    --sage:      #6b7259;
+    --ember:     #c4622d;
+    --ember-2:   #a84e21;
+    --brass:     #a98545;
+    --ash:       #8a8378;
+    --line:      rgba(243,234,216,0.14);
 
-    <link rel="stylesheet" href="css/style.css">
+    --serif: 'Fraunces', serif;
+    --sans:  'Instrument Sans', sans-serif;
+
+    --ease: cubic-bezier(.22,.8,.28,1);
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; background:var(--char); }
+
+  body{
+    background:var(--char);
+    color:var(--cream);
+    font-family:var(--sans);
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  ::selection{ background:var(--ember); color:var(--cream); }
+
+  a{ color:inherit; text-decoration:none; }
+  img{ max-width:100%; display:block; }
+
+  .eyebrow-meta{
+    font-family:var(--sans);
+    font-size:0.72rem;
+    letter-spacing:0.18em;
+    color:var(--ash);
+    font-weight:500;
+  }
+
+  /* film grain, sits above everything, low opacity */
+  .grain{
+    position:fixed; inset:0; z-index:200; pointer-events:none;
+    opacity:0.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ================= NAV ================= */
+  .nav{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:1.6rem clamp(1.25rem,4vw,3rem);
+    transition:padding .5s var(--ease), background .5s var(--ease);
+  }
+  .nav.compact{
+    padding:0.85rem clamp(1.25rem,4vw,3rem);
+    background:rgba(22,19,15,0.82);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-mark{
+    font-family:var(--serif); font-weight:500; font-size:1.05rem;
+    letter-spacing:0.02em;
+  }
+  .nav-links{
+    display:flex; gap:clamp(1.2rem,3vw,2.4rem); align-items:center;
+    font-size:0.82rem; letter-spacing:0.03em;
+  }
+  .nav-links a{ opacity:0.78; transition:opacity .3s; }
+  .nav-links a:hover, .nav-links a:focus-visible{ opacity:1; }
+  .nav-order{
+    border:1px solid var(--cream); padding:0.55rem 1.3rem;
+    font-size:0.78rem; letter-spacing:0.04em; border-radius:2px;
+    transition:background .3s, color .3s;
+  }
+  .nav-order:hover, .nav-order:focus-visible{ background:var(--cream); color:var(--char); }
+  .nav-toggle{ display:none; background:none; border:0; color:var(--cream); font-size:1.4rem; cursor:pointer; }
+
+  @media (max-width:760px){
+    .nav-links{
+      position:fixed; top:0; right:0; height:100vh; width:min(78vw,320px);
+      background:var(--char-2); flex-direction:column; justify-content:center;
+      gap:2rem; font-size:1.1rem; transform:translateX(100%);
+      transition:transform .45s var(--ease); border-left:1px solid var(--line);
+    }
+    .nav-links.open{ transform:translateX(0); }
+    .nav-order{ display:none; }
+    .nav-toggle{ display:block; z-index:101; }
+  }
+
+  /* ================= HERO ================= */
+  .hero{
+    position:relative; height:100vh; width:100%;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden; background:var(--char);
+  }
+  .hero-media{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover;
+    /* Placeholder gradient stands in for the 10s hero food video.
+       Swap the <video> source below with the real asset — the scroll-scrub
+       logic in the script tag will drive video.currentTime automatically. */
+  }
+  .hero-media-fallback{
+    position:absolute; inset:0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 30%, rgba(196,98,45,0.28), transparent 60%),
+      linear-gradient(180deg, #1c1712 0%, #16130f 55%, #100d09 100%);
+  }
+  .hero-vignette{
+    position:absolute; inset:0;
+    background:radial-gradient(ellipse 120% 90% at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%);
+    pointer-events:none;
+  }
+  .hero-content{
+    position:relative; z-index:2; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:1.1rem;
+  }
+  .hero-mark{
+    font-family:var(--serif); font-weight:400; line-height:0.92;
+    font-size:clamp(3rem,10vw,7.5rem); letter-spacing:-0.01em;
+  }
+  .hero-mark em{ font-style:italic; font-weight:300; color:var(--cream-dim); }
+  .hero-meta{
+    font-size:0.78rem; letter-spacing:0.22em; color:var(--ash);
+    margin-top:0.3rem;
+  }
+  .hero-scroll{
+    position:absolute; bottom:2.4rem; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:0.6rem;
+    z-index:2; font-size:0.68rem; letter-spacing:0.2em; color:var(--ash);
+  }
+  .hero-scroll-line{
+    width:1px; height:34px; background:linear-gradient(var(--ash), transparent);
+    animation:scrollpulse 2.2s ease-in-out infinite;
+  }
+  @keyframes scrollpulse{
+    0%,100%{ transform:scaleY(1); opacity:0.5; }
+    50%{ transform:scaleY(1.3); opacity:1; }
+  }
+
+  /* ================= EXPLODE STAGE ================= */
+  .explode-wrap{ position:relative; height:340vh; background:var(--char); }
+  .explode-stage{
+    position:sticky; top:0; height:100vh; width:100%;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .explode-caption{
+    position:absolute; top:12%; left:50%; transform:translateX(-50%);
+    text-align:center; z-index:5; pointer-events:none;
+  }
+  .explode-caption .eyebrow-meta{ display:block; margin-bottom:0.6rem; }
+  .explode-caption h2{
+    font-family:var(--serif); font-weight:400; font-size:clamp(1.8rem,4.2vw,3.2rem);
+  }
+  .explode-scene{
+    position:relative; width:min(70vw,620px); height:min(70vw,620px);
+    transform-style:preserve-3d; perspective:1200px;
+  }
+  .ing{
+    position:absolute; top:50%; left:50%; border-radius:50%;
+    transform:translate(-50%,-50%);
+    filter:blur(0px);
+    box-shadow:0 20px 50px rgba(0,0,0,0.45);
+  }
+  .ing-bun-top{ width:46%; height:26%; background:radial-gradient(circle at 35% 30%, #d9a35c, #a56a2e 75%); border-radius:50% 50% 45% 45%/70% 70% 40% 40%; }
+  .ing-lettuce{ width:52%; height:14%; background:linear-gradient(120deg,#7c8a52,#525c37); border-radius:40%; }
+  .ing-tomato{ width:40%; height:10%; background:linear-gradient(120deg,#c4622d,#8f3f1c); border-radius:45%; }
+  .ing-patty{  width:44%; height:16%; background:radial-gradient(circle at 40% 35%,#5a3a26,#2c1c12 80%); border-radius:48%; }
+  .ing-cheese{ width:48%; height:8%;  background:linear-gradient(120deg,#e0ad4a,#c98f2e); }
+  .ing-bun-bot{ width:46%; height:18%; background:radial-gradient(circle at 40% 40%, #cf9750, #96602a 75%); border-radius:40% 40% 50% 50%/40% 40% 70% 70%; }
+  .ing-sesame{ position:absolute; width:6px; height:6px; background:#f3ead8; border-radius:50%; opacity:0.85; }
+
+  /* ================= STORY ================= */
+  .story{
+    position:relative; padding:min(22vw,14rem) clamp(1.5rem,6vw,6rem) min(16vw,9rem);
+    background:var(--char);
+  }
+  .story-grid{
+    display:grid; grid-template-columns:1.1fr 0.9fr; gap:clamp(2rem,6vw,6rem);
+    align-items:center; max-width:1400px; margin:0 auto;
+  }
+  .story-eyebrow{ margin-bottom:1.4rem; }
+  .story h2{
+    font-family:var(--serif); font-weight:400; font-size:clamp(2.1rem,4.6vw,3.6rem);
+    line-height:1.08; max-width:11ch;
+  }
+  .story p{
+    margin-top:1.6rem; font-size:1.05rem; line-height:1.7; color:var(--cream-dim);
+    max-width:52ch;
+  }
+  .story-visual{
+    position:relative; aspect-ratio:4/5; border-radius:2px; overflow:hidden;
+    background:linear-gradient(155deg,#2a2117,#171310 60%);
+  }
+  .story-visual::after{
+    content:"Editorial imagery — Morgan's dining room";
+    position:absolute; inset:0; display:flex; align-items:flex-end;
+    padding:1.2rem; font-size:0.72rem; letter-spacing:0.06em; color:var(--ash);
+  }
+  @media (max-width:860px){
+    .story-grid{ grid-template-columns:1fr; }
+    .story-visual{ order:-1; aspect-ratio:16/10; }
+  }
+
+  /* ================= MENU ================= */
+  .menu{ padding:min(14vw,8rem) clamp(1.5rem,6vw,6rem) min(10vw,6rem); background:var(--char-2); }
+  .menu-head{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:2rem;
+    max-width:1400px; margin:0 auto 4.5rem; flex-wrap:wrap;
+  }
+  .menu-head h2{ font-family:var(--serif); font-weight:400; font-size:clamp(2.1rem,4.6vw,3.4rem); }
+  .menu-list{ max-width:1400px; margin:0 auto; display:flex; flex-direction:column; }
+  .dish{
+    display:grid; grid-template-columns:0.9fr 1.6fr auto; gap:clamp(1.5rem,4vw,4rem);
+    align-items:center; padding:2.6rem 0; border-top:1px solid var(--line);
+  }
+  .menu-list .dish:last-child{ border-bottom:1px solid var(--line); }
+  .dish:nth-child(even){ grid-template-columns:1.6fr 0.9fr auto; }
+  .dish:nth-child(even) .dish-visual{ order:2; }
+  .dish-visual{
+    aspect-ratio:5/4; border-radius:2px;
+    background:linear-gradient(135deg,#3a2c1c,#1c1610 70%);
+  }
+  .dish-info h3{ font-family:var(--serif); font-weight:400; font-size:clamp(1.5rem,2.6vw,2rem); }
+  .dish-info p{ margin-top:0.7rem; color:var(--ash); font-size:0.95rem; max-width:42ch; line-height:1.6; }
+  .dish-price{ font-family:var(--serif); font-size:1.3rem; color:var(--brass); white-space:nowrap; }
+  @media (max-width:760px){
+    .dish, .dish:nth-child(even){ grid-template-columns:1fr; }
+    .dish:nth-child(even) .dish-visual{ order:0; }
+    .dish{ gap:1.2rem; padding:2rem 0; }
+    .dish-price{ font-size:1.15rem; }
+  }
+  .menu-cta{ display:flex; justify-content:center; margin-top:4rem; }
+  .btn-outline{
+    border:1px solid var(--cream); padding:0.95rem 2.4rem; font-size:0.85rem;
+    letter-spacing:0.05em; border-radius:2px; transition:background .3s,color .3s;
+  }
+  .btn-outline:hover, .btn-outline:focus-visible{ background:var(--cream); color:var(--char); }
+
+  /* ================= BAR ================= */
+  .bar{
+    padding:min(14vw,8rem) clamp(1.5rem,6vw,6rem);
+    background:linear-gradient(180deg,var(--char-2),#241c14 60%,var(--char-2));
+  }
+  .bar-inner{ max-width:1400px; margin:0 auto; }
+  .bar h2{ font-family:var(--serif); font-weight:400; font-size:clamp(2.1rem,4.6vw,3.4rem); margin-bottom:3.2rem; }
+  .bar-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:2px; background:var(--line); }
+  .pour{
+    background:var(--char-2); padding:3rem 2rem; position:relative;
+    min-height:220px; display:flex; flex-direction:column; justify-content:flex-end;
+  }
+  .pour::before{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(circle at 30% 20%, rgba(196,98,45,0.18), transparent 60%);
+  }
+  .pour h3{ font-family:var(--serif); font-size:1.4rem; font-weight:400; position:relative; }
+  .pour span{ position:relative; display:block; margin-top:0.4rem; font-size:0.8rem; color:var(--ash); }
+  @media (max-width:700px){ .bar-grid{ grid-template-columns:1fr; } }
+  .bar-cta{ margin-top:3rem; text-align:center; }
+
+  /* ================= POWER CTA ================= */
+  .power{
+    padding:min(18vw,11rem) 1.5rem; display:flex; flex-direction:column;
+    align-items:center; gap:2.2rem; background:var(--char); text-align:center;
+  }
+  .power-btn{
+    --size:clamp(150px,20vw,220px);
+    width:var(--size); height:var(--size); border-radius:50%;
+    border:1px solid rgba(243,234,216,0.35);
+    display:flex; align-items:center; justify-content:center;
+    position:relative; cursor:pointer; background:transparent;
+    transition:transform .5s var(--ease), border-color .5s;
+  }
+  .power-btn::before{
+    content:""; position:absolute; inset:-14px; border-radius:50%;
+    background:radial-gradient(circle, rgba(196,98,45,0.5), transparent 70%);
+    opacity:0; transition:opacity .5s var(--ease);
+  }
+  .power-btn:hover, .power-btn:focus-visible{ transform:scale(1.06); border-color:var(--ember); }
+  .power-btn:hover::before, .power-btn:focus-visible::before{ opacity:1; }
+  .power-btn-label{
+    font-family:var(--serif); font-size:clamp(0.95rem,1.6vw,1.25rem);
+    line-height:1.3; position:relative; z-index:1;
+  }
+  .power p{ color:var(--ash); font-size:0.95rem; max-width:36ch; }
+
+  /* ================= REVIEWS ================= */
+  .reviews{ padding:min(14vw,8rem) clamp(1.5rem,6vw,6rem); background:var(--char-2); }
+  .reviews-inner{ max-width:1000px; margin:0 auto; text-align:center; }
+  .reviews blockquote{
+    font-family:var(--serif); font-weight:300; font-style:italic;
+    font-size:clamp(1.6rem,4vw,2.8rem); line-height:1.35; color:var(--cream);
+  }
+  .reviews-meta{
+    margin-top:2.2rem; display:flex; justify-content:center; gap:clamp(1.5rem,4vw,3.5rem);
+    flex-wrap:wrap; font-size:0.82rem; color:var(--ash); letter-spacing:0.03em;
+  }
+  .reviews-meta strong{ color:var(--brass); font-family:var(--serif); font-style:normal; font-size:1.1rem; display:block; margin-bottom:0.2rem; }
+
+  /* ================= ROOM / EVENTS ================= */
+  .room{ position:relative; padding:min(16vw,10rem) clamp(1.5rem,6vw,6rem); background:var(--char); overflow:hidden; }
+  .room-visual{
+    position:absolute; inset:0;
+    background:linear-gradient(155deg,#2c2317,#16130f 65%);
+  }
+  .room-content{ position:relative; z-index:2; max-width:640px; }
+  .room h2{ font-family:var(--serif); font-weight:400; font-size:clamp(2.1rem,4.6vw,3.4rem); }
+  .room p{ margin-top:1.4rem; color:var(--cream-dim); font-size:1.05rem; line-height:1.7; max-width:46ch; }
+  .room .btn-outline{ display:inline-block; margin-top:2.2rem; }
+
+  /* ================= LOCATION ================= */
+  .location{ padding:min(14vw,8rem) clamp(1.5rem,6vw,6rem); background:var(--char-2); }
+  .location-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:clamp(2rem,6vw,5rem);
+    max-width:1400px; margin:0 auto; align-items:center;
+  }
+  .location h2{ font-family:var(--serif); font-weight:400; font-size:clamp(2.1rem,4.6vw,3.2rem); margin-bottom:2rem; }
+  .location-row{ display:flex; gap:1rem; padding:1rem 0; border-top:1px solid var(--line); }
+  .location-row:last-of-type{ border-bottom:1px solid var(--line); }
+  .location-row span:first-child{ width:100px; flex-shrink:0; color:var(--ash); font-size:0.85rem; }
+  .location-row span:last-child{ font-size:0.98rem; }
+  .location-map{
+    aspect-ratio:1/1; background:linear-gradient(135deg,#2a2117,#16130f);
+    display:flex; align-items:center; justify-content:center; color:var(--ash);
+    font-size:0.85rem; text-align:center; padding:2rem; border-radius:2px;
+  }
+  @media (max-width:860px){ .location-grid{ grid-template-columns:1fr; } .location-map{ order:-1; } }
+
+  /* ================= FINAL CTA ================= */
+  .final{
+    min-height:90vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:1.8rem; padding:4rem 1.5rem; background:var(--char);
+    position:relative; overflow:hidden;
+  }
+  .final::before{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(ellipse 70% 50% at 50% 50%, rgba(196,98,45,0.14), transparent 70%);
+  }
+  .final-eyebrow{ position:relative; z-index:1; }
+  .final h2{ position:relative; z-index:1; font-family:var(--serif); font-weight:300; font-style:italic; font-size:clamp(2rem,5.5vw,4rem); }
+  .final-mark{ position:relative; z-index:1; font-family:var(--serif); font-size:clamp(1.6rem,4vw,2.4rem); margin-top:0.6rem; }
+  .final-actions{ position:relative; z-index:1; display:flex; gap:1rem; margin-top:1.2rem; flex-wrap:wrap; justify-content:center; }
+  .btn-solid{
+    background:var(--cream); color:var(--char); padding:0.95rem 2.4rem;
+    font-size:0.85rem; letter-spacing:0.05em; border-radius:2px;
+    transition:background .3s;
+  }
+  .btn-solid:hover, .btn-solid:focus-visible{ background:var(--brass); color:var(--char); }
+
+  /* ================= FOOTER ================= */
+  footer{
+    padding:2.5rem clamp(1.5rem,6vw,6rem); display:flex; justify-content:space-between;
+    align-items:center; flex-wrap:wrap; gap:1rem; font-size:0.78rem; color:var(--ash);
+    border-top:1px solid var(--line); background:var(--char);
+  }
+
+  /* reveal utility */
+  .reveal{ opacity:0; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; scroll-behavior:auto !important; }
+  }
+</style>
 </head>
-
 <body>
 
-    <!-- =====================================================
-         PRELOADER
-    ====================================================== -->
+<div class="grain"></div>
 
-    <div class="preloader">
+<nav class="nav" id="siteNav">
+  <div class="nav-mark">MORGAN'S ON MAIN</div>
+  <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">☰</button>
+  <div class="nav-links" id="navLinks">
+    <a href="#experience">Experience</a>
+    <a href="#menu">Menu</a>
+    <a href="#bar">Bar</a>
+    <a href="#events">Events</a>
+    <a href="#contact">Contact</a>
+    <a class="nav-order" href="#" id="orderBtn">Order</a>
+  </div>
+</nav>
 
-        <div class="preloader-inner">
+<!-- ================= HERO ================= -->
+<header class="hero" id="top">
+  <div class="hero-media-fallback"></div>
+  <!-- Replace src with the real 10-second hero food video.
+       preload="auto", muted, playsinline required for the scroll-scrub script below to drive it. -->
+  <video class="hero-media" id="heroVideo" muted playsinline preload="auto" style="opacity:0"
+         onloadeddata="this.style.opacity=1" onerror="this.style.display='none'">
+    <source src="assets/hero-food.mp4" type="video/mp4">
+  </video>
+  <div class="hero-vignette"></div>
+  <div class="hero-content">
+    <div class="hero-mark">MORGAN'S<br><em>on main</em></div>
+    <div class="hero-meta">WOODLAND · CALIFORNIA</div>
+  </div>
+  <div class="hero-scroll">
+    <span>SCROLL</span>
+    <div class="hero-scroll-line"></div>
+  </div>
+</header>
 
-            <span class="preloader-location">
-                WOODLAND · CALIFORNIA
-            </span>
-
-            <div class="preloader-logo">
-                MORGAN'S
-                <span>ON MAIN</span>
-            </div>
-
-            <div class="preloader-line"></div>
-
-            <span class="preloader-status">
-                PREPARING THE TABLE
-            </span>
-
-        </div>
-
+<!-- ================= EXPLODE STAGE ================= -->
+<div class="explode-wrap" id="explodeWrap">
+  <div class="explode-stage">
+    <div class="explode-caption">
+      <span class="eyebrow-meta">THE M.O.M. BURGER</span>
+      <h2>Built to fall apart.<br>Built to come back together.</h2>
     </div>
-
-
-    <!-- =====================================================
-         MAIN EXPERIENCE
-    ====================================================== -->
-
-    <main class="experience">
-
-
-        <!-- =================================================
-             HERO
-        ================================================== -->
-
-        <section class="hero" id="home">
-
-            <div class="hero-background"></div>
-
-
-            <!-- HEADER -->
-
-            <header class="hero-header">
-
-                <a href="#home" class="brand">
-
-                    <span>MORGAN'S</span>
-
-                    <small>ON MAIN</small>
-
-                </a>
-
-
-                <nav class="navigation">
-
-                    <a href="#experience">EXPERIENCE</a>
-                    <a href="#menu">MENU</a>
-                    <a href="#reviews">REVIEWS</a>
-                    <a href="#visit">VISIT</a>
-
-                </nav>
-
-
-                <a
-                    href="https://order.toasttab.com/online/morgans-on-main-614-main-st"
-                    class="header-order"
-                    target="_blank"
-                    rel="noopener"
-                >
-                    ORDER ONLINE
-                </a>
-
-            </header>
-
-
-            <!-- HERO CONTENT -->
-
-            <div class="hero-content">
-
-
-                <div class="hero-copy">
-
-                    <span class="hero-eyebrow">
-                        WOODLAND · CALIFORNIA
-                    </span>
-
-
-                    <h1>
-
-                        <span class="hero-title-main">
-                            MORGAN'S
-                        </span>
-
-                        <span class="hero-title-sub">
-                            ON MAIN
-                        </span>
-
-                    </h1>
-
-
-                    <p class="hero-description">
-                        CALIFORNIA COMFORT GRILL
-                    </p>
-
-                </div>
-
-
-                <!-- FOOD VIDEO -->
-
-                <div class="hero-video-wrap">
-
-                    <div class="hero-video-shadow"></div>
-
-                    <video
-                        class="hero-video"
-                        src="assets/hero-food.mp4"
-                        muted
-                        playsinline
-                        autoplay
-                        loop
-                        preload="auto"
-                    ></video>
-
-                </div>
-
-
-            </div>
-
-
-            <!-- ATMOSPHERIC OVERLAYS -->
-
-            <div class="hero-vignette"></div>
-
-            <div class="hero-grain"></div>
-
-
-            <!-- HERO FOOTER -->
-
-            <div class="hero-bottom">
-
-
-                <div class="hero-scroll">
-
-                    <span>
-                        SCROLL TO ENTER
-                    </span>
-
-                    <div class="scroll-line">
-
-                        <span></span>
-
-                    </div>
-
-                </div>
-
-
-                <div class="hero-address">
-
-                    <span>
-                        614 MAIN ST
-                    </span>
-
-                    <span>
-                        WOODLAND, CA
-                    </span>
-
-                </div>
-
-
-                <div class="hero-hours">
-
-                    <span>
-                        MON — SAT
-                    </span>
-
-                    <span>
-                        11:30 AM — LATE
-                    </span>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             EXPERIENCE
-        ================================================== -->
-
-        <section
-            class="intro"
-            id="experience"
-        >
-
-            <div class="intro-inner">
-
-                <div class="section-meta">
-
-                    <span class="section-number">
-                        01
-                    </span>
-
-                    <span class="section-label">
-                        THE EXPERIENCE
-                    </span>
-
-                </div>
-
-
-                <div class="intro-content">
-
-                    <h2>
-
-                        MORE THAN
-
-                        <span>
-                            A MEAL.
-                        </span>
-
-                    </h2>
-
-
-                    <p>
-
-                        A modern expression of California comfort,
-                        rooted in Woodland and made for the table.
-
-                    </p>
-
-                </div>
-
-
-                <div class="intro-detail">
-
-                    <span>
-                        LOCAL INGREDIENTS
-                    </span>
-
-                    <span>
-                        CRAFTED IN WOODLAND
-                    </span>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             MENU INTRO
-        ================================================== -->
-
-        <section
-            class="menu-section"
-            id="menu"
-        >
-
-            <div class="menu-inner">
-
-
-                <div class="section-meta">
-
-                    <span class="section-number">
-                        02
-                    </span>
-
-                    <span class="section-label">
-                        THE MENU
-                    </span>
-
-                </div>
-
-
-                <div class="menu-heading">
-
-                    <span class="menu-kicker">
-                        FROM THE KITCHEN
-                    </span>
-
-                    <h2>
-
-                        DINNER
-
-                        <span>
-                            IS SERVED.
-                        </span>
-
-                    </h2>
-
-                    <p>
-
-                        California comfort, elevated for the
-                        modern table.
-
-                    </p>
-
-                </div>
-
-
-                <div class="menu-preview">
-
-
-                    <div class="menu-item">
-
-                        <span class="menu-item-number">
-                            01
-                        </span>
-
-                        <div>
-
-                            <h3>
-                                AHI POKE NACHOS
-                            </h3>
-
-                            <p>
-                                Ahi tuna · avocado · crispy wontons
-                            </p>
-
-                        </div>
-
-                        <span class="menu-price">
-                            $19
-                        </span>
-
-                    </div>
-
-
-                    <div class="menu-item">
-
-                        <span class="menu-item-number">
-                            02
-                        </span>
-
-                        <div>
-
-                            <h3>
-                                SNAP-CRACKLE SALMON
-                            </h3>
-
-                            <p>
-                                Fresh salmon · seasonal accompaniments
-                            </p>
-
-                        </div>
-
-                        <span class="menu-price">
-                            $31
-                        </span>
-
-                    </div>
-
-
-                    <div class="menu-item">
-
-                        <span class="menu-item-number">
-                            03
-                        </span>
-
-                        <div>
-
-                            <h3>
-                                C.A.B. RIBEYE
-                            </h3>
-
-                            <p>
-                                14oz certified Angus beef
-                            </p>
-
-                        </div>
-
-                        <span class="menu-price">
-                            $49
-                        </span>
-
-                    </div>
-
-
-                    <div class="menu-item">
-
-                        <span class="menu-item-number">
-                            04
-                        </span>
-
-                        <div>
-
-                            <h3>
-                                WARM BROWNIE
-                            </h3>
-
-                            <p>
-                                Warm chocolate · house dessert
-                            </p>
-
-                        </div>
-
-                        <span class="menu-price">
-                            $11
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <a
-                    href="menu.html"
-                    class="menu-button"
-                >
-                    EXPLORE THE FULL MENU
-                </a>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             POWER CTA
-        ================================================== -->
-
-        <section class="power-section">
-
-            <div class="power-inner">
-
-
-                <span class="power-kicker">
-                    YOUR TABLE AWAITS
-                </span>
-
-
-                <button
-                    class="power-button"
-                    onclick="window.open('https://order.toasttab.com/online/morgans-on-main-614-main-st', '_blank')"
-                    aria-label="Order online"
-                >
-
-                    <span class="power-ring"></span>
-
-                    <span class="power-icon">
-                        ⏻
-                    </span>
-
-                </button>
-
-
-                <h2>
-
-                    MAKE IT
-
-                    <span>
-                        A NIGHT.
-                    </span>
-
-                </h2>
-
-
-                <p>
-                    ORDER ONLINE · JOIN US ON MAIN
-                </p>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             REVIEWS
-        ================================================== -->
-
-        <section
-            class="reviews-section"
-            id="reviews"
-        >
-
-            <div class="reviews-inner">
-
-
-                <div class="section-meta">
-
-                    <span class="section-number">
-                        03
-                    </span>
-
-                    <span class="section-label">
-                        THE WORD ON MAIN
-                    </span>
-
-                </div>
-
-
-                <div class="reviews-heading">
-
-                    <span>
-                        4.5 · GOOGLE
-                    </span>
-
-                    <h2>
-
-                        DON'T TAKE
-
-                        <span>
-                            OUR WORD FOR IT.
-                        </span>
-
-                    </h2>
-
-                </div>
-
-
-                <div class="review-feature">
-
-                    <div class="review-mark">
-                        “
-                    </div>
-
-                    <blockquote>
-                        A Woodland favorite built around
-                        good food, great drinks and an even
-                        better atmosphere.
-                    </blockquote>
-
-                    <div class="review-source">
-                        MORGAN'S ON MAIN · WOODLAND
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             VISIT
-        ================================================== -->
-
-        <section
-            class="visit-section"
-            id="visit"
-        >
-
-            <div class="visit-inner">
-
-
-                <div class="visit-content">
-
-
-                    <div class="section-meta">
-
-                        <span class="section-number">
-                            04
-                        </span>
-
-                        <span class="section-label">
-                            FIND US
-                        </span>
-
-                    </div>
-
-
-                    <h2>
-
-                        SEE YOU
-
-                        <span>
-                            ON MAIN.
-                        </span>
-
-                    </h2>
-
-
-                    <div class="visit-details">
-
-                        <div>
-
-                            <span>
-                                ADDRESS
-                            </span>
-
-                            <p>
-                                614 Main Street<br>
-                                Woodland, California
-                            </p>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                PHONE
-                            </span>
-
-                            <p>
-                                530 · 402 · 1275
-                            </p>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                HOURS
-                            </span>
-
-                            <p>
-                                MON — THU · 11:30 — 9<br>
-                                FRI — SAT · 11:30 — 10
-                            </p>
-
-                        </div>
-
-                    </div>
-
-
-                    <a
-                        href="https://www.google.com/maps/search/?api=1&query=Morgan's+On+Main+614+Main+Street+Woodland+CA"
-                        class="visit-button"
-                        target="_blank"
-                        rel="noopener"
-                    >
-                        GET DIRECTIONS
-                    </a>
-
-                </div>
-
-
-                <div class="visit-mark">
-
-                    <span>
-                        M
-                    </span>
-
-                    <small>
-                        ON MAIN
-                    </small>
-
-                </div>
-
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             FINAL CTA
-        ================================================== -->
-
-        <section class="final-section">
-
-            <div class="final-inner">
-
-
-                <span class="final-location">
-                    WOODLAND · CALIFORNIA
-                </span>
-
-
-                <h2>
-
-                    MORGAN'S
-
-                    <span>
-                        ON MAIN
-                    </span>
-
-                </h2>
-
-
-                <p>
-                    CALIFORNIA COMFORT GRILL
-                </p>
-
-
-                <a
-                    href="https://order.toasttab.com/online/morgans-on-main-614-main-st"
-                    class="final-button"
-                    target="_blank"
-                    rel="noopener"
-                >
-                    ORDER ONLINE
-                </a>
-
-
-                <div class="final-footer">
-
-                    <span>
-                        614 MAIN ST · WOODLAND, CA
-                    </span>
-
-                    <span>
-                        © 2026 MORGAN'S ON MAIN
-                    </span>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-    </main>
-
-
-    <!-- =====================================================
-         JAVASCRIPT
-    ====================================================== -->
-
-    <script src="js/main.js"></script>
-
+    <div class="explode-scene" id="explodeScene">
+      <div class="ing ing-bun-top" data-depth="1.4" style="z-index:6"></div>
+      <div class="ing ing-lettuce" data-depth="0.9" style="z-index:5"></div>
+      <div class="ing ing-tomato" data-depth="1.1" style="z-index:4"></div>
+      <div class="ing ing-cheese" data-depth="0.7" style="z-index:3"></div>
+      <div class="ing ing-patty" data-depth="1.3" style="z-index:2"></div>
+      <div class="ing ing-bun-bot" data-depth="0.6" style="z-index:1"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= STORY ================= -->
+<section class="story" id="experience">
+  <div class="story-grid">
+    <div class="reveal" data-reveal>
+      <div class="eyebrow-meta story-eyebrow">CALIFORNIA COMFORT GRILL</div>
+      <h2>Grown twenty minutes from the kitchen door.</h2>
+      <p>Morgan's On Main sits on a quiet corner of downtown Woodland, in the heart of Yolo County's farmland. The kitchen builds its menu around what the valley grows: stone fruit in summer, brassicas in winter, and a rotation of produce pulled from farms most diners drive past on the way in. The food is unfussy on purpose — comfort food built from ingredients that don't need much help.</p>
+    </div>
+    <div class="story-visual reveal" data-reveal></div>
+  </div>
+</section>
+
+<!-- ================= MENU ================= -->
+<section class="menu" id="menu">
+  <div class="menu-head">
+    <h2>Signature menu</h2>
+    <p style="color:var(--ash); max-width:36ch; font-size:0.95rem;">Five dishes that define the kitchen. The full menu changes with the season — this doesn't.</p>
+  </div>
+  <div class="menu-list">
+    <div class="dish reveal" data-reveal>
+      <div class="dish-visual"></div>
+      <div class="dish-info">
+        <h3>Ahi Poke Nachos</h3>
+        <p>Raw ahi, wonton crisps, avocado, sesame-soy, pickled fresno.</p>
+      </div>
+      <div class="dish-price">$19</div>
+    </div>
+    <div class="dish reveal" data-reveal>
+      <div class="dish-visual"></div>
+      <div class="dish-info">
+        <h3>Snap-Crackle Salmon</h3>
+        <p>Crisp-skin salmon, charred citrus, calabrian chile butter.</p>
+      </div>
+      <div class="dish-price">$31</div>
+    </div>
+    <div class="dish reveal" data-reveal>
+      <div class="dish-visual"></div>
+      <div class="dish-info">
+        <h3>C.A.B. Ribeye</h3>
+        <p>Certified Angus Beef ribeye, bone marrow butter, herb jus.</p>
+      </div>
+      <div class="dish-price">$49</div>
+    </div>
+    <div class="dish reveal" data-reveal>
+      <div class="dish-visual"></div>
+      <div class="dish-info">
+        <h3>M.O.M. Burger</h3>
+        <p>Double smash patty, aged cheddar, house sauce, brioche.</p>
+      </div>
+      <div class="dish-price">$20</div>
+    </div>
+    <div class="dish reveal" data-reveal>
+      <div class="dish-visual"></div>
+      <div class="dish-info">
+        <h3>Warm Brownie</h3>
+        <p>Dark chocolate brownie, salted caramel, vanilla bean ice cream.</p>
+      </div>
+      <div class="dish-price">$11</div>
+    </div>
+  </div>
+  <div class="menu-cta">
+    <a class="btn-outline" href="menu.html">View full menu</a>
+  </div>
+</section>
+
+<!-- ================= BAR ================= -->
+<section class="bar" id="bar">
+  <div class="bar-inner">
+    <h2>From the bar</h2>
+    <div class="bar-grid">
+      <div class="pour reveal" data-reveal><h3>Pear Pom Punch</h3><span>Vodka, pear, pomegranate, lime</span></div>
+      <div class="pour reveal" data-reveal><h3>Springtime Spritz</h3><span>Prosecco, elderflower, cucumber</span></div>
+      <div class="pour reveal" data-reveal><h3>Pomegranate Martini</h3><span>Vodka, pomegranate, fresh lime</span></div>
+      <div class="pour reveal" data-reveal><h3>Whiskey Basil Smash</h3><span>Bourbon, basil, lemon, honey</span></div>
+    </div>
+    <div class="bar-cta">
+      <a class="btn-outline" href="bar.html">Explore the bar</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= POWER CTA ================= -->
+<section class="power">
+  <button class="power-btn" id="powerBtn">
+    <span class="power-btn-label">Power<br>your table</span>
+  </button>
+  <p>One tap to start an order for pickup or delivery.</p>
+</section>
+
+<!-- ================= REVIEWS ================= -->
+<section class="reviews">
+  <div class="reviews-inner">
+    <blockquote>"The kind of place you bring people when you want Woodland to make a good impression."</blockquote>
+    <div class="reviews-meta">
+      <div><strong>4.8</strong>Google · 600+ reviews</div>
+      <div><strong>Best Patio</strong>Woodland, 2025</div>
+      <div><strong>Local</strong>Family-run since day one</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ROOM / EVENTS ================= -->
+<section class="room" id="events">
+  <div class="room-visual"></div>
+  <div class="room-content reveal" data-reveal>
+    <h2>The Room</h2>
+    <p>A private dining space for rehearsal dinners, holiday parties, and everything in between. Seats up to 40, with its own bar setup and a menu built around the occasion.</p>
+    <a class="btn-outline" href="events.html">Explore the room</a>
+  </div>
+</section>
+
+<!-- ================= LOCATION ================= -->
+<section class="location" id="contact">
+  <div class="location-grid">
+    <div>
+      <h2>Find us</h2>
+      <div class="location-row"><span>Address</span><span>614 Main St, Woodland, CA 95695</span></div>
+      <div class="location-row"><span>Phone</span><span>(530) 555-0142</span></div>
+      <div class="location-row"><span>Hours</span><span>Tue–Sun, 11am–9pm · Closed Mondays</span></div>
+      <a class="btn-outline" style="display:inline-block; margin-top:2rem;" href="https://maps.google.com/?q=614+Main+St+Woodland+CA" target="_blank" rel="noopener">Get directions</a>
+    </div>
+    <div class="location-map">Map embed goes here — 614 Main St, Woodland, CA</div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="final">
+  <div class="eyebrow-meta final-eyebrow">RESERVATIONS ALWAYS RECOMMENDED</div>
+  <h2>Your table is waiting.</h2>
+  <div class="final-mark">MORGAN'S ON MAIN — WOODLAND, CALIFORNIA</div>
+  <div class="final-actions">
+    <a class="btn-solid" href="#" id="finalOrderBtn">Order online</a>
+    <a class="btn-outline" href="menu.html">View menu</a>
+  </div>
+</section>
+
+<footer>
+  <div>© 2026 Morgan's On Main</div>
+  <div>614 Main St, Woodland, CA 95695</div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Nav ---------- */
+const nav = document.getElementById('siteNav');
+ScrollTrigger.create({
+  start: 80,
+  onUpdate: self => nav.classList.toggle('compact', self.scroll() > 80)
+});
+
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
+navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => navLinks.classList.remove('open')));
+
+/* ---------- Order buttons ---------- */
+const ORDER_URL = "https://order.toasttab.com/online/morgans-on-main"; // swap for the real Toast link
+[document.getElementById('orderBtn'), document.getElementById('powerBtn'), document.getElementById('finalOrderBtn')]
+  .forEach(el => el && el.addEventListener('click', e => { e.preventDefault(); window.open(ORDER_URL, '_blank'); }));
+
+if (!reduceMotion) {
+
+  /* ---------- Hero: scroll-scrubbed video + pinned exit ---------- */
+  const heroVideo = document.getElementById('heroVideo');
+  heroVideo.addEventListener('loadedmetadata', () => {
+    ScrollTrigger.create({
+      trigger: '#top',
+      start: 'top top',
+      end: 'bottom top',
+      scrub: 0.4,
+      onUpdate: self => {
+        if (heroVideo.duration) heroVideo.currentTime = self.progress * heroVideo.duration;
+      }
+    });
+  });
+
+  gsap.to('.hero-content, .hero-scroll', {
+    opacity: 0,
+    y: -40,
+    scrollTrigger: { trigger: '#top', start: 'top top', end: 'bottom top', scrub: 0.4 }
+  });
+
+  /* ---------- Exploded ingredients ---------- */
+  const ingredients = gsap.utils.toArray('.ing');
+  const spread = { // final exploded offsets (x, y, rot) per layer
+    '.ing-bun-top':  { x: -160, y: -260, r: -18 },
+    '.ing-lettuce':  { x: 190,  y: -120, r: 12  },
+    '.ing-tomato':   { x: -210, y: -10,  r: -8  },
+    '.ing-cheese':   { x: 170,  y: 90,   r: 14  },
+    '.ing-patty':    { x: -140, y: 190,  r: -16 },
+    '.ing-bun-bot':  { x: 130,  y: 280,  r: 10  }
+  };
+
+  const explodeTl = gsap.timeline({
+    scrollTrigger: {
+      trigger: '#explodeWrap',
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 0.6
+    }
+  });
+
+  ingredients.forEach(ing => {
+    const cls = '.' + ing.classList[1];
+    const target = spread[cls] || { x: 0, y: 0, r: 0 };
+    const depth = parseFloat(ing.dataset.depth) || 1;
+    // phase 1: explode out (0 -> 0.4), hold/rotate through the middle, phase 2: reform (0.6 -> 1)
+    explodeTl
+      .fromTo(ing,
+        { x: 0, y: 0, rotate: 0, scale: 1 },
+        { x: target.x * depth, y: target.y * depth, rotate: target.r * 2, scale: 1.08, ease: 'power2.out', duration: 0.4 },
+        0)
+      .to(ing, { rotate: target.r * -2, duration: 0.2, ease: 'sine.inOut' }, 0.4)
+      .to(ing, { x: 0, y: 0, rotate: 0, scale: 1, ease: 'power2.inOut', duration: 0.4 }, 0.6);
+  });
+
+  gsap.fromTo('.explode-caption', { opacity: 0 }, {
+    opacity: 1, duration: 0.3,
+    scrollTrigger: {
+      trigger: '#explodeWrap', start: 'top top', end: 'bottom bottom', scrub: 0.6,
+      onUpdate: self => {
+        const p = self.progress;
+        gsap.set('.explode-caption', { opacity: (p < 0.08 || p > 0.92) ? p < 0.08 ? p/0.08 : (1-p)/0.08 : 1 });
+      }
+    }
+  });
+
+  /* ---------- Generic reveals ---------- */
+  gsap.utils.toArray('[data-reveal]').forEach(el => {
+    gsap.fromTo(el, { opacity: 0, y: 32 }, {
+      opacity: 1, y: 0, duration: 1, ease: 'power2.out',
+      scrollTrigger: { trigger: el, start: 'top 85%' }
+    });
+  });
+
+  /* ---------- Story parallax ---------- */
+  gsap.to('.story-visual', {
+    yPercent: -8,
+    ease: 'none',
+    scrollTrigger: { trigger: '.story', start: 'top bottom', end: 'bottom top', scrub: true }
+  });
+
+  /* ---------- Menu dish reveal stagger already covered by [data-reveal] ---------- */
+
+  /* ---------- Reviews mask reveal ---------- */
+  gsap.fromTo('.reviews blockquote',
+    { backgroundSize: '0% 100%' },
+    {
+      backgroundSize: '100% 100%', duration: 1,
+      scrollTrigger: { trigger: '.reviews', start: 'top 70%', end: 'top 30%', scrub: true }
+    }
+  );
+
+  /* ---------- Room parallax ---------- */
+  gsap.to('.room-visual', {
+    yPercent: 12, ease: 'none',
+    scrollTrigger: { trigger: '.room', start: 'top bottom', end: 'bottom top', scrub: true }
+  });
+
+} else {
+  document.querySelectorAll('[data-reveal]').forEach(el => el.style.opacity = 1);
+}
+</script>
 </body>
 </html>
