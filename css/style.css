@@ -1301,3 +1301,173 @@ footer a:hover{
   }
 
 }
+/* =========================================
+   3D FOOD MENU CARDS
+========================================= */
+
+.menu-grid{
+  perspective:1800px;
+}
+
+.menu-card{
+  transform-style:preserve-3d;
+  will-change:transform;
+  overflow:hidden;
+  position:relative;
+}
+
+/* Premium light sweep */
+.menu-card::before{
+  content:"";
+  position:absolute;
+  width:220px;
+  height:220px;
+  top:-100px;
+  right:-90px;
+  border-radius:50%;
+  background:radial-gradient(
+    circle,
+    rgba(196,154,90,.28),
+    transparent 70%
+  );
+  transform:translateZ(30px);
+  pointer-events:none;
+}
+
+/* 3D number */
+.menu-card .eyebrow{
+  position:relative;
+  z-index:2;
+  transform:translateZ(35px);
+}
+
+/* Food title comes forward */
+.menu-card h3{
+  transform:translateZ(45px);
+  text-shadow:
+    0 8px 18px rgba(0,0,0,.08);
+}
+
+/* Description sits deeper */
+.menu-card p{
+  transform:translateZ(25px);
+}
+
+/* Hover glow */
+.menu-card:hover{
+  box-shadow:
+    0 35px 80px rgba(35,27,18,.18),
+    0 10px 30px rgba(196,154,90,.12);
+}
+
+/* Individual depth */
+.menu-card:nth-child(1){
+  transform:rotateY(-2deg);
+}
+
+.menu-card:nth-child(2){
+  transform:translateY(-18px) rotateY(1deg);
+}
+
+.menu-card:nth-child(3){
+  transform:rotateY(2deg);
+}
+
+.menu-card:nth-child(1):hover{
+  transform:
+    perspective(1000px)
+    rotateY(-7deg)
+    rotateX(3deg)
+    translateZ(20px)
+    translateY(-12px);
+}
+
+.menu-card:nth-child(2):hover{
+  transform:
+    perspective(1000px)
+    rotateY(4deg)
+    rotateX(4deg)
+    translateZ(30px)
+    translateY(-20px);
+}
+
+.menu-card:nth-child(3):hover{
+  transform:
+    perspective(1000px)
+    rotateY(7deg)
+    rotateX(3deg)
+    translateZ(20px)
+    translateY(-12px);
+}
+
+
+/* =========================================
+   3D GALLERY
+========================================= */
+
+.gallery-grid{
+  perspective:1800px;
+}
+
+.gallery-grid img{
+  transform-style:preserve-3d;
+  will-change:transform;
+}
+
+.gallery-grid img:hover{
+  transform:
+    perspective(900px)
+    rotateX(2deg)
+    rotateY(-3deg)
+    translateZ(20px)
+    scale(1.025);
+  z-index:5;
+}
+
+
+/* =========================================
+   3D DRINKS
+========================================= */
+
+.drink{
+  transform-style:preserve-3d;
+  transition:
+    transform .35s ease,
+    padding-left .3s ease,
+    border-color .3s ease;
+}
+
+.drink strong{
+  transform:translateZ(25px);
+}
+
+.drink span{
+  transform:translateZ(15px);
+}
+
+
+/* =========================================
+   MOBILE — KEEP IT CLEAN
+========================================= */
+
+@media(max-width:800px){
+
+  .menu-card:nth-child(1),
+  .menu-card:nth-child(2),
+  .menu-card:nth-child(3){
+    transform:none;
+  }
+
+  .menu-card:nth-child(2){
+    margin-top:0;
+  }
+
+  .menu-card:hover{
+    transform:translateY(-5px);
+  }
+
+  .gallery-grid img:hover{
+    transform:scale(1.02);
+  }
+
+}
