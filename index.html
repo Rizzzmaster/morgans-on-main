@@ -170,23 +170,26 @@
   .explode-caption h2{
     font-family:var(--serif); font-weight:400; font-size:clamp(1.8rem,4.2vw,3.2rem);
   }
-  .explode-scene{
-    position:relative; width:min(70vw,620px); height:min(70vw,620px);
-    transform-style:preserve-3d; perspective:1200px;
+  .explode-canvas{
+    position:absolute; inset:0; width:100%; height:100%; display:block;
   }
-  .ing{
-    position:absolute; top:50%; left:50%; border-radius:50%;
-    transform:translate(-50%,-50%);
-    filter:blur(0px);
-    box-shadow:0 20px 50px rgba(0,0,0,0.45);
+  .dish-scene{
+    position:relative; width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    perspective:1400px;
   }
-  .ing-bun-top{ width:46%; height:26%; background:radial-gradient(circle at 35% 30%, #d9a35c, #a56a2e 75%); border-radius:50% 50% 45% 45%/70% 70% 40% 40%; }
-  .ing-lettuce{ width:52%; height:14%; background:linear-gradient(120deg,#7c8a52,#525c37); border-radius:40%; }
-  .ing-tomato{ width:40%; height:10%; background:linear-gradient(120deg,#c4622d,#8f3f1c); border-radius:45%; }
-  .ing-patty{  width:44%; height:16%; background:radial-gradient(circle at 40% 35%,#5a3a26,#2c1c12 80%); border-radius:48%; }
-  .ing-cheese{ width:48%; height:8%;  background:linear-gradient(120deg,#e0ad4a,#c98f2e); }
-  .ing-bun-bot{ width:46%; height:18%; background:radial-gradient(circle at 40% 40%, #cf9750, #96602a 75%); border-radius:40% 40% 50% 50%/40% 40% 70% 70%; }
-  .ing-sesame{ position:absolute; width:6px; height:6px; background:#f3ead8; border-radius:50%; opacity:0.85; }
+  .dish-main{
+    position:relative; width:min(46vw,360px); aspect-ratio:448/684;
+    border-radius:6px; overflow:hidden; transform-style:preserve-3d;
+    box-shadow:0 40px 90px rgba(0,0,0,0.55);
+  }
+  .dish-main img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .dish-chip{
+    position:absolute; top:50%; left:50%; width:clamp(70px,9vw,120px); height:clamp(70px,9vw,120px);
+    border-radius:50%; overflow:hidden; box-shadow:0 18px 40px rgba(0,0,0,0.5);
+    border:2px solid rgba(243,234,216,0.25);
+  }
+  .dish-chip img{ width:100%; height:100%; object-fit:cover; display:block; }
 
   /* ================= STORY ================= */
   .story{
@@ -421,16 +424,18 @@
 <div class="explode-wrap" id="explodeWrap">
   <div class="explode-stage">
     <div class="explode-caption">
-      <span class="eyebrow-meta">THE M.O.M. BURGER</span>
+      <span class="eyebrow-meta">AHI POKE NACHOS</span>
       <h2>Built to fall apart.<br>Built to come back together.</h2>
     </div>
-    <div class="explode-scene" id="explodeScene">
-      <div class="ing ing-bun-top" data-depth="1.4" style="z-index:6"></div>
-      <div class="ing ing-lettuce" data-depth="0.9" style="z-index:5"></div>
-      <div class="ing ing-tomato" data-depth="1.1" style="z-index:4"></div>
-      <div class="ing ing-cheese" data-depth="0.7" style="z-index:3"></div>
-      <div class="ing ing-patty" data-depth="1.3" style="z-index:2"></div>
-      <div class="ing ing-bun-bot" data-depth="0.6" style="z-index:1"></div>
+    <div class="dish-scene" id="dishScene">
+      <div class="dish-main" id="dishMain">
+        <img src="assets/ahi-poke-nachos-enhanced.jpg" alt="Ahi Poke Nachos at Morgan's On Main">
+      </div>
+      <div class="dish-chip" id="chipAvocado"><img src="assets/chip-avocado.png" alt=""></div>
+      <div class="dish-chip" id="chipJalapeno"><img src="assets/chip-jalapeno.png" alt=""></div>
+      <div class="dish-chip" id="chipSesameBlack"><img src="assets/chip-sesame-black.png" alt=""></div>
+      <div class="dish-chip" id="chipSesameWhite"><img src="assets/chip-sesame-white.png" alt=""></div>
+      <div class="dish-chip" id="chipAhiDice"><img src="assets/chip-ahi-dice.png" alt=""></div>
     </div>
   </div>
 </div>
@@ -622,39 +627,63 @@ if (!reduceMotion) {
     scrollTrigger: { trigger: '#top', start: 'top top', end: 'bottom top', scrub: 0.4 }
   });
 
-  /* ---------- Exploded ingredients ---------- */
-  const ingredients = gsap.utils.toArray('.ing');
-  const spread = { // final exploded offsets (x, y, rot) per layer
-    '.ing-bun-top':  { x: -160, y: -260, r: -18 },
-    '.ing-lettuce':  { x: 190,  y: -120, r: 12  },
-    '.ing-tomato':   { x: -210, y: -10,  r: -8  },
-    '.ing-cheese':   { x: 170,  y: 90,   r: 14  },
-    '.ing-patty':    { x: -140, y: 190,  r: -16 },
-    '.ing-bun-bot':  { x: 130,  y: 280,  r: 10  }
-  };
+  /* ---------- Real dish scene: photo-based depth + garnish chips ---------- */
+  initDishScene();
 
-  const explodeTl = gsap.timeline({
-    scrollTrigger: {
-      trigger: '#explodeWrap',
-      start: 'top top',
-      end: 'bottom bottom',
-      scrub: 0.6
+  function initDishScene(){
+    const main = document.getElementById('dishMain');
+    if (!main) return;
+
+    // Each garnish chip: where it starts (scattered, off to a side, small)
+    // and where it settles (near its real position on the plate, at rest).
+    const chips = [
+      { el: document.getElementById('chipAvocado'),     from: { x: -340, y: -180, r: -35, s: 0.6 }, to: { x: 78,  y: -92, r: 0, s: 1 } },
+      { el: document.getElementById('chipJalapeno'),     from: { x: 320,  y: -140, r: 40,  s: 0.6 }, to: { x: -70, y: -18, r: 0, s: 1 } },
+      { el: document.getElementById('chipSesameBlack'),  from: { x: -300, y: 190,  r: -30, s: 0.55 }, to: { x: -120,y: -150,r: 0, s: 0.85 } },
+      { el: document.getElementById('chipSesameWhite'),  from: { x: 300,  y: 200,  r: 30,  s: 0.55 }, to: { x: 110, y: -150,r: 0, s: 0.85 } },
+      { el: document.getElementById('chipAhiDice'),      from: { x: 0,    y: 300,  r: 20,  s: 0.6 }, to: { x: 0,   y: 20,  r: 0, s: 0.95 } }
+    ];
+
+    function render(progress){
+      const p = Math.min(Math.max(progress, 0), 1);
+      // 0 -> 1 -> 0 shape: chips are scattered at the very start and very end,
+      // fully assembled with a gentle 3D tilt through the middle of the pin.
+      const assembled = Math.sin(p * Math.PI); // 0 at edges, 1 at middle
+
+      chips.forEach(chip => {
+        if (!chip.el) return;
+        const x = chip.from.x + (chip.to.x - chip.from.x) * assembled;
+        const y = chip.from.y + (chip.to.y - chip.from.y) * assembled;
+        const rot = chip.from.r + (chip.to.r - chip.from.r) * assembled;
+        const scale = chip.from.s + (chip.to.s - chip.from.s) * assembled;
+        const opacity = 0.3 + 0.7 * assembled;
+        chip.el.style.transform = `translate(-50%,-50%) translate(${x}px, ${y}px) rotate(${rot}deg) scale(${scale})`;
+        chip.el.style.opacity = opacity;
+        chip.el.style.zIndex = 3;
+      });
+
+      // The main plate photo tilts in 3D like a camera drifting around it,
+      // and settles flat once everything has assembled.
+      const tiltY = (1 - assembled) * 22 * (p < 0.5 ? 1 : -1);
+      const tiltX = (1 - assembled) * -10;
+      const scale = 0.86 + assembled * 0.14;
+      main.style.transform = `rotateY(${tiltY}deg) rotateX(${tiltX}deg) scale(${scale})`;
     }
-  });
 
-  ingredients.forEach(ing => {
-    const cls = '.' + ing.classList[1];
-    const target = spread[cls] || { x: 0, y: 0, r: 0 };
-    const depth = parseFloat(ing.dataset.depth) || 1;
-    // phase 1: explode out (0 -> 0.4), hold/rotate through the middle, phase 2: reform (0.6 -> 1)
-    explodeTl
-      .fromTo(ing,
-        { x: 0, y: 0, rotate: 0, scale: 1 },
-        { x: target.x * depth, y: target.y * depth, rotate: target.r * 2, scale: 1.08, ease: 'power2.out', duration: 0.4 },
-        0)
-      .to(ing, { rotate: target.r * -2, duration: 0.2, ease: 'sine.inOut' }, 0.4)
-      .to(ing, { x: 0, y: 0, rotate: 0, scale: 1, ease: 'power2.inOut', duration: 0.4 }, 0.6);
-  });
+    render(0);
+
+    if (!reduceMotion) {
+      ScrollTrigger.create({
+        trigger: '#explodeWrap',
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: 0.5,
+        onUpdate: self => render(self.progress)
+      });
+    } else {
+      render(0.999); // land fully assembled, flat, for reduced-motion visitors
+    }
+  }
 
   gsap.fromTo('.explode-caption', { opacity: 0 }, {
     opacity: 1, duration: 0.3,
@@ -701,6 +730,12 @@ if (!reduceMotion) {
 
 } else {
   document.querySelectorAll('[data-reveal]').forEach(el => el.style.opacity = 1);
+  // reduced motion: land the dish fully assembled and static, no scroll-linked movement
+  const chipEls = ['chipAvocado','chipJalapeno','chipSesameBlack','chipSesameWhite','chipAhiDice'];
+  chipEls.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.opacity = 0; }
+  });
 }
 </script>
 </body>
