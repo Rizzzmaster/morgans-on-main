@@ -1,47 +1,48 @@
 /* ============================================================
    MORGAN'S ON MAIN
-   CINEMATIC EXPERIENCE ENGINE
-   Version 2.0
+   FAST CINEMATIC ENGINE
+   Performance-first version
    ============================================================ */
 
 (() => {
   "use strict";
 
-  /* ============================================================
+  /* ----------------------------------------------------------
      HELPERS
-  ============================================================ */
+  ---------------------------------------------------------- */
 
-  const $ = (selector, scope = document) =>
-    scope.querySelector(selector);
+  const $ = (s, scope = document) =>
+    scope.querySelector(s);
 
-  const $$ = (selector, scope = document) =>
-    Array.from(scope.querySelectorAll(selector));
+  const $$ = (s, scope = document) =>
+    Array.from(scope.querySelectorAll(s));
 
-  const clamp = (value, min = 0, max = 1) =>
-    Math.min(Math.max(value, min), max);
+  const clamp = (n, min = 0, max = 1) =>
+    Math.min(Math.max(n, min), max);
 
-  const lerp = (a, b, amount) =>
-    a + (b - a) * amount;
+  const lerp = (a, b, n) =>
+    a + (b - a) * n;
+
+  const mobile = window.matchMedia(
+    "(max-width: 900px)"
+  ).matches;
+
+  const touch = window.matchMedia(
+    "(pointer: coarse)"
+  ).matches;
 
   const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
-  const touchDevice = window.matchMedia(
-    "(pointer: coarse)"
-  ).matches;
 
-
-  /* ============================================================
+  /* ----------------------------------------------------------
      STATE
-  ============================================================ */
+  ---------------------------------------------------------- */
 
   const state = {
     scrollY: window.scrollY,
-    previousScrollY: window.scrollY,
-
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
+    lastScrollY: window.scrollY,
 
     mouseX: 0,
     mouseY: 0,
@@ -52,7 +53,10 @@
     cursorX: window.innerWidth / 2,
     cursorY: window.innerHeight / 2,
 
-    direction: "down",
+    raf: null,
+    cursorRaf: null,
+
+    visible: true,
 
     menuIndex: 0,
     cocktailIndex: 0,
@@ -62,123 +66,135 @@
 
     galleryDragging: false,
     galleryStartX: 0,
-    galleryStartScroll: 0,
-
-    visible: true,
-
-    raf: null,
-
-    resizeTimer: null
+    galleryStartScroll: 0
   };
 
 
-  /* ============================================================
-     ROOT VARIABLES
-  ============================================================ */
+  /* ----------------------------------------------------------
+     VIEWPORT
+  ---------------------------------------------------------- */
 
-  function updateViewport() {
-    state.viewportWidth = window.innerWidth;
-    state.viewportHeight = window.innerHeight;
-
+  function setViewport() {
     document.documentElement.style.setProperty(
       "--viewport-width",
-      `${state.viewportWidth}px`
+      `${window.innerWidth}px`
     );
 
     document.documentElement.style.setProperty(
       "--viewport-height",
-      `${state.viewportHeight}px`
+      `${window.innerHeight}px`
     );
   }
 
-  updateViewport();
+  setViewport();
 
 
-  /* ============================================================
-     RAF
-  ============================================================ */
+  /* ==========================================================
+     FAST RENDER SYSTEM
+     ========================================================== */
 
-  function requestFrame() {
+  function requestRender() {
     if (state.raf || !state.visible) return;
 
-    state.raf = requestAnimationFrame(render);
-  }
+    state.raf = requestAnimationFrame(() => {
+      state.raf = null;
 
-  function render() {
-    state.raf = null;
-
-    if (!state.visible) return;
-
-    state.scrollY = window.scrollY;
-
-    updateScrollDirection();
-    updateGlobalScroll();
-    updateHeader();
-    updateHero();
-    updatePointerDepth();
-    updateTable();
-    updateDinner();
-    updateEvents();
-    updateVisit();
-    updateGallery();
-    updateCursor();
-
-    if (!reducedMotion) {
-      requestFrame();
-    }
+      updateScrollState();
+      updateHeader();
+      updateHero();
+      updateTable();
+      updateDinner();
+      updateEvents();
+      updateVisit();
+      updateGallery();
+    });
   }
 
 
-  /* ============================================================
-     SCROLL DIRECTION
-  ============================================================ */
+  /* ==========================================================
+     SCROLL
+     ========================================================== */
 
-  function updateScrollDirection() {
-    if (state.scrollY > state.previousScrollY) {
-      state.direction = "down";
-    } else if (
-      state.scrollY < state.previousScrollY
-    ) {
-      state.direction = "up";
+  function updateScrollState() {
+    const current = window.scrollY;
+
+    const direction =
+      current > state.lastScrollY
+        ? "down"
+        : current < state.lastScrollY
+          ? "up"
+          : null;
+
+    state.scrollY = current;
+
+    if (direction) {
+      document.documentElement.style.setProperty(
+        "--scroll-direction",
+        direction
+      );
     }
 
-    state.previousScrollY = state.scrollY;
-  }
+    state.lastScrollY = current;
 
-
-  /* ============================================================
-     GLOBAL SCROLL
-  ============================================================ */
-
-  function updateGlobalScroll() {
-    const maxScroll =
+    const max =
       document.documentElement.scrollHeight -
-      state.viewportHeight;
-
-    const progress =
-      maxScroll > 0
-        ? clamp(state.scrollY / maxScroll)
-        : 0;
+      window.innerHeight;
 
     document.documentElement.style.setProperty(
       "--scroll-progress",
-      progress
+      max > 0
+        ? clamp(current / max)
+        : 0
+    );
+  }
+
+  window.addEventListener(
+    "scroll",
+    requestRender,
+    { passive: true }
+  );
+
+
+  /* ==========================================================
+     HEADER
+     ========================================================== */
+
+  function updateHeader() {
+    const header = $("[data-header]");
+
+    if (!header) return;
+
+    header.classList.toggle(
+      "is-scrolled",
+      state.scrollY > 40
     );
 
-    document.documentElement.style.setProperty(
-      "--scroll-position",
-      `${state.scrollY}px`
+    /*
+      Keep mobile header visible.
+    */
+
+    if (mobile) {
+      header.classList.remove(
+        "is-hidden"
+      );
+      return;
+    }
+
+    header.classList.toggle(
+      "is-hidden",
+      state.scrollY > 160 &&
+      state.lastScrollY > state.scrollY
     );
   }
 
 
-  /* ============================================================
-     EXPERIENCE CURTAIN
-     ONLY ONE TIMEOUT
-  ============================================================ */
+  /* ==========================================================
+     LOADER
+     ========================================================== */
 
-  function initCurtain() {
-    const curtain = $(".experience-curtain");
+  function initLoader() {
+    const curtain =
+      $(".experience-curtain");
 
     if (!curtain) return;
 
@@ -187,13 +203,23 @@
     );
 
     requestAnimationFrame(() => {
-      curtain.classList.add("is-ready");
+      curtain.classList.add(
+        "is-ready"
+      );
     });
 
-    const finish = () => {
-      curtain.classList.add("is-exiting");
+    /*
+      Fast cinematic intro.
+      Only ONE timeout.
+    */
 
-      curtain.style.pointerEvents = "none";
+    setTimeout(() => {
+      curtain.classList.add(
+        "is-exiting"
+      );
+
+      curtain.style.pointerEvents =
+        "none";
 
       document.body.classList.remove(
         "experience-loading"
@@ -203,153 +229,22 @@
         "experience-ready"
       );
 
-      /*
-        Give the CSS exit animation time to finish.
-        There is only ONE timeout for the entire loader.
-      */
-
       setTimeout(() => {
-        curtain.classList.add("is-hidden");
-        curtain.style.display = "none";
-      }, reducedMotion ? 100 : 900);
-    };
-
-    /*
-      One single loader delay.
-    */
-
-    setTimeout(
-      finish,
-      reducedMotion ? 100 : 900
-    );
-  }
-
-
-  /* ============================================================
-     HEADER
-  ============================================================ */
-
-  function initHeader() {
-    const header = $("[data-header]");
-
-    if (!header) return;
-
-    window.addEventListener(
-      "scroll",
-      requestFrame,
-      { passive: true }
-    );
-  }
-
-  function updateHeader() {
-    const header = $("[data-header]");
-
-    if (!header) return;
-
-    header.classList.toggle(
-      "is-scrolled",
-      state.scrollY > 50
-    );
-
-    /*
-      Don't hide the header aggressively on mobile.
-    */
-
-    if (state.viewportWidth <= 900) {
-      header.classList.remove(
-        "is-hidden"
-      );
-
-      return;
-    }
-
-    header.classList.toggle(
-      "is-hidden",
-      state.scrollY > 180 &&
-      state.direction === "down"
-    );
-
-    header.classList.toggle(
-      "is-visible",
-      state.direction === "up" ||
-      state.scrollY < 180
-    );
-  }
-
-
-  /* ============================================================
-     MOBILE MENU
-  ============================================================ */
-
-  function initMobileMenu() {
-    const toggle =
-      $("[data-menu-toggle]");
-
-    const menu =
-      $("[data-mobile-menu]");
-
-    if (!toggle || !menu) return;
-
-    toggle.setAttribute(
-      "aria-expanded",
-      "false"
-    );
-
-    toggle.addEventListener(
-      "click",
-      () => {
-        const open =
-          document.body.classList.toggle(
-            "mobile-menu-open"
-          );
-
-        toggle.setAttribute(
-          "aria-expanded",
-          String(open)
+        curtain.classList.add(
+          "is-hidden"
         );
 
-        toggle.setAttribute(
-          "aria-label",
-          open
-            ? "Close navigation"
-            : "Open navigation"
-        );
-      }
-    );
+        curtain.style.display =
+          "none";
+      }, reducedMotion ? 50 : 650);
 
-    $$("a", menu).forEach(link => {
-      link.addEventListener(
-        "click",
-        () => closeMobileMenu()
-      );
-    });
-  }
-
-  function closeMobileMenu() {
-    const toggle =
-      $("[data-menu-toggle]");
-
-    document.body.classList.remove(
-      "mobile-menu-open"
-    );
-
-    if (toggle) {
-      toggle.setAttribute(
-        "aria-expanded",
-        "false"
-      );
-
-      toggle.setAttribute(
-        "aria-label",
-        "Open navigation"
-      );
-    }
+    }, reducedMotion ? 50 : 500);
   }
 
 
-  /* ============================================================
+  /* ==========================================================
      HERO
-  ============================================================ */
+  ========================================================== */
 
   function updateHero() {
     const hero =
@@ -359,6 +254,19 @@
 
     const rect =
       hero.getBoundingClientRect();
+
+    /*
+      Stop doing calculations when
+      hero is far away.
+    */
+
+    if (
+      rect.bottom < -100 ||
+      rect.top >
+        window.innerHeight + 100
+    ) {
+      return;
+    }
 
     const progress =
       clamp(
@@ -371,244 +279,261 @@
       progress
     );
 
-    /*
-      Backdrop
-    */
-
-    const backdrop =
-      $(".hero-backdrop", hero);
-
-    if (backdrop) {
-      const y =
-        progress * -55;
-
-      const scale =
-        1 + progress * 0.06;
-
-      backdrop.style.transform =
-        `translate3d(0, ${y}px, 0) scale(${scale})`;
-    }
-
-    /*
-      Atmosphere
-    */
-
-    const atmosphere =
-      $(".hero-atmosphere", hero);
-
-    if (atmosphere) {
-      atmosphere.style.transform =
-        `translate3d(
-          0,
-          ${progress * -30}px,
-          0
-        )`;
-    }
-
-    /*
-      Content
-    */
-
     const content =
       $(".hero-content", hero);
-
-    if (content) {
-      const y =
-        progress * -35;
-
-      const opacity =
-        clamp(
-          1 - progress * 1.15
-        );
-
-      content.style.transform =
-        `translate3d(0, ${y}px, 0)`;
-
-      content.style.opacity =
-        opacity;
-    }
-
-    /*
-      Food
-    */
 
     const food =
       $(".hero-food-scene", hero);
 
-    if (food) {
-      const y =
-        progress * -65;
-
-      const scale =
-        1 + progress * 0.08;
-
-      food.style.transform =
-        `translate3d(
-          var(--mouse-x, 0px),
-          calc(${y}px + var(--mouse-y, 0px)),
-          0
-        ) scale(${scale})`;
-
-      food.style.opacity =
-        clamp(
-          1 - progress * 1.25
-        );
-    }
+    const atmosphere =
+      $(".hero-atmosphere", hero);
 
     /*
-      Bottom text
+      Mobile gets much lighter effects.
     */
 
-    const bottom =
-      $(".hero-bottom", hero);
+    if (!mobile && !reducedMotion) {
 
-    if (bottom) {
-      bottom.style.opacity =
-        clamp(
-          1 - progress * 2
-        );
+      if (content) {
+        content.style.transform =
+          `translate3d(
+            0,
+            ${progress * -30}px,
+            0
+          )`;
+
+        content.style.opacity =
+          clamp(
+            1 - progress * 1.1
+          );
+      }
+
+      if (food) {
+        food.style.transform =
+          `translate3d(
+            var(--mouse-x, 0px),
+            calc(
+              ${progress * -45}px +
+              var(--mouse-y, 0px)
+            ),
+            0
+          ) scale(
+            ${1 + progress * 0.05}
+          )`;
+      }
+
+      if (atmosphere) {
+        atmosphere.style.transform =
+          `translate3d(
+            0,
+            ${progress * -20}px,
+            0
+          )`;
+      }
     }
   }
 
 
-  /* ============================================================
-     POINTER
-  ============================================================ */
+  /* ==========================================================
+     POINTER PARALLAX
+  ========================================================== */
 
   function initPointer() {
-    if (touchDevice) return;
+    /*
+      Disable expensive pointer effects
+      on phones/tablets.
+    */
+
+    if (touch || mobile) return;
 
     window.addEventListener(
       "pointermove",
       event => {
+
         state.mouseX =
           event.clientX /
-          state.viewportWidth -
+          window.innerWidth -
           0.5;
 
         state.mouseY =
           event.clientY /
-          state.viewportHeight -
+          window.innerHeight -
           0.5;
 
-        requestFrame();
+        requestCursorRender();
       },
       { passive: true }
     );
   }
 
 
-  function updatePointerDepth() {
-    if (touchDevice) return;
+  /* ==========================================================
+     CURSOR
+  ========================================================== */
 
-    state.smoothMouseX =
-      lerp(
-        state.smoothMouseX,
-        state.mouseX,
-        0.08
-      );
+  function initCursor() {
+    if (touch || mobile) return;
 
-    state.smoothMouseY =
-      lerp(
-        state.smoothMouseY,
-        state.mouseY,
-        0.08
-      );
+    const cursor =
+      $(".cursor-system");
 
-    /*
-      Hero light
-    */
+    if (!cursor) return;
 
-    const light =
-      $("[data-cursor-light]");
+    document.body.classList.add(
+      "custom-cursor-enabled"
+    );
 
-    if (light) {
-      light.style.transform =
-        `translate3d(
-          ${state.smoothMouseX * 45}px,
-          ${state.smoothMouseY * 45}px,
-          0
-        )`;
-    }
-
-    /*
-      Generic depth layers
-    */
-
-    $$("[data-depth]").forEach(
-      element => {
-        const depth =
-          parseFloat(
-            element.dataset.depth || 1
+    document.addEventListener(
+      "pointerover",
+      event => {
+        if (
+          event.target.closest(
+            "a, button, .dish-slide, .cocktail-card"
+          )
+        ) {
+          cursor.classList.add(
+            "is-hovering"
           );
-
-        element.style.setProperty(
-          "--pointer-depth-x",
-          `${state.smoothMouseX * depth * 7}px`
-        );
-
-        element.style.setProperty(
-          "--pointer-depth-y",
-          `${state.smoothMouseY * depth * 7}px`
-        );
+        }
       }
     );
 
-    /*
-      Hero food custom movement
-    */
-
-    const food =
-      $(".hero-food-scene");
-
-    if (food) {
-      food.style.setProperty(
-        "--mouse-x",
-        `${state.smoothMouseX * 20}px`
-      );
-
-      food.style.setProperty(
-        "--mouse-y",
-        `${state.smoothMouseY * 16}px`
-      );
-    }
-  }
-
-
-  /* ============================================================
-     SCENE OBSERVER
-  ============================================================ */
-
-  function initScenes() {
-    const scenes =
-      $$("[data-scene]");
-
-    if (!scenes.length) return;
-
-    const observer =
-      new IntersectionObserver(
-        entries => {
-          entries.forEach(entry => {
-            entry.target.classList.toggle(
-              "is-active",
-              entry.isIntersecting
-            );
-          });
-        },
-        {
-          threshold: 0.12
+    document.addEventListener(
+      "pointerout",
+      event => {
+        if (
+          event.target.closest(
+            "a, button, .dish-slide, .cocktail-card"
+          )
+        ) {
+          cursor.classList.remove(
+            "is-hovering"
+          );
         }
-      );
-
-    scenes.forEach(scene =>
-      observer.observe(scene)
+      }
     );
   }
 
 
-  /* ============================================================
+  function requestCursorRender() {
+    if (state.cursorRaf) return;
+
+    state.cursorRaf =
+      requestAnimationFrame(() => {
+
+        state.cursorRaf = null;
+
+        state.smoothMouseX =
+          lerp(
+            state.smoothMouseX,
+            state.mouseX,
+            0.15
+          );
+
+        state.smoothMouseY =
+          lerp(
+            state.smoothMouseY,
+            state.mouseY,
+            0.15
+          );
+
+        const cursor =
+          $(".cursor-system");
+
+        if (cursor) {
+
+          const x =
+            state.smoothMouseX *
+            window.innerWidth +
+            window.innerWidth / 2;
+
+          const y =
+            state.smoothMouseY *
+            window.innerHeight +
+            window.innerHeight / 2;
+
+          cursor.style.transform =
+            `translate3d(
+              ${x}px,
+              ${y}px,
+              0
+            )`;
+        }
+
+        const light =
+          $("[data-cursor-light]");
+
+        if (light) {
+          light.style.transform =
+            `translate3d(
+              ${state.smoothMouseX * 30}px,
+              ${state.smoothMouseY * 30}px,
+              0
+            )`;
+        }
+
+        const food =
+          $(".hero-food-scene");
+
+        if (food) {
+          food.style.setProperty(
+            "--mouse-x",
+            `${state.smoothMouseX * 15}px`
+          );
+
+          food.style.setProperty(
+            "--mouse-y",
+            `${state.smoothMouseY * 12}px`
+          );
+        }
+      });
+  }
+
+
+  /* ==========================================================
+     DEPTH LAYERS
+  ========================================================== */
+
+  function initDepth() {
+    if (touch || mobile) return;
+
+    const layers =
+      $$("[data-depth]");
+
+    if (!layers.length) return;
+
+    window.addEventListener(
+      "pointermove",
+      () => {
+
+        layers.forEach(layer => {
+
+          const depth =
+            parseFloat(
+              layer.dataset.depth || 1
+            );
+
+          layer.style.setProperty(
+            "--pointer-depth-x",
+            `${state.smoothMouseX * depth * 5}px`
+          );
+
+          layer.style.setProperty(
+            "--pointer-depth-y",
+            `${state.smoothMouseY * depth * 5}px`
+          );
+
+        });
+
+      },
+      { passive: true }
+    );
+  }
+
+
+  /* ==========================================================
      REVEALS
-  ============================================================ */
+  ========================================================== */
 
   function initReveal() {
     const elements =
@@ -630,8 +555,12 @@
     const observer =
       new IntersectionObserver(
         entries => {
+
           entries.forEach(entry => {
-            if (!entry.isIntersecting) {
+
+            if (
+              !entry.isIntersecting
+            ) {
               return;
             }
 
@@ -642,12 +571,14 @@
             observer.unobserve(
               entry.target
             );
+
           });
+
         },
         {
-          threshold: 0.12,
+          threshold: 0.08,
           rootMargin:
-            "0px 0px -7% 0px"
+            "0px 0px -5% 0px"
         }
       );
 
@@ -658,11 +589,47 @@
   }
 
 
-  /* ============================================================
-     TABLE STORY
-  ============================================================ */
+  /* ==========================================================
+     SCENES
+  ========================================================== */
 
-  function initTableStory() {
+  function initScenes() {
+    const scenes =
+      $$("[data-scene]");
+
+    if (!scenes.length) return;
+
+    const observer =
+      new IntersectionObserver(
+        entries => {
+
+          entries.forEach(entry => {
+
+            entry.target.classList.toggle(
+              "is-active",
+              entry.isIntersecting
+            );
+
+          });
+
+        },
+        {
+          threshold: 0.1
+        }
+      );
+
+    scenes.forEach(
+      scene =>
+        observer.observe(scene)
+    );
+  }
+
+
+  /* ==========================================================
+     TABLE
+  ========================================================== */
+
+  function initTable() {
     const table =
       $('[data-scene="table"]');
 
@@ -671,19 +638,24 @@
     const items =
       $$(".table-story-item", table);
 
-    if (!items.length) return;
-
     items.forEach(
       (item, index) => {
+
         item.addEventListener(
           "click",
           () => {
-            activateStory(
-              index,
-              items
+
+            items.forEach(
+              (el, i) =>
+                el.classList.toggle(
+                  "is-active",
+                  i === index
+                )
             );
+
           }
         );
+
       }
     );
   }
@@ -695,89 +667,44 @@
 
     if (!table) return;
 
-    const items =
-      $$(".table-story-item", table);
-
-    if (!items.length) return;
-
     const rect =
       table.getBoundingClientRect();
 
     if (
       rect.bottom < 0 ||
       rect.top >
-      state.viewportHeight
+        window.innerHeight
     ) {
       return;
     }
 
+    const image =
+      $("[data-pinned-image]", table);
+
+    if (!image) return;
+
     const progress =
       clamp(
         (
-          state.viewportHeight -
+          window.innerHeight -
           rect.top
         ) /
         (
-          state.viewportHeight +
+          window.innerHeight +
           rect.height
         )
       );
 
-    const index =
-      Math.min(
-        items.length - 1,
-        Math.floor(
-          progress * items.length
-        )
-      );
-
-    activateStory(
-      index,
-      items,
-      false
+    image.style.setProperty(
+      "--table-progress",
+      progress
     );
-
-    const image =
-      $("[data-pinned-image]", table);
-
-    if (image) {
-      image.style.setProperty(
-        "--table-progress",
-        progress
-      );
-    }
   }
 
 
-  function activateStory(
-    index,
-    items,
-    scrollIntoView = false
-  ) {
-    items.forEach(
-      (item, itemIndex) => {
-        item.classList.toggle(
-          "is-active",
-          itemIndex === index
-        );
-      }
-    );
-
-    if (
-      scrollIntoView &&
-      !reducedMotion
-    ) {
-      items[index].scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-      });
-    }
-  }
-
-
-  /* ============================================================
-     DISH MENU
-  ============================================================ */
+  /* ==========================================================
+     MENU
+  ========================================================== */
 
   function initMenu() {
     const showcase =
@@ -790,14 +717,14 @@
 
     if (!dishes.length) return;
 
-    const previous =
+    const prev =
       $("[data-dish-prev]");
 
     const next =
       $("[data-dish-next]");
 
-    if (previous) {
-      previous.addEventListener(
+    if (prev) {
+      prev.addEventListener(
         "click",
         () => changeDish(-1)
       );
@@ -810,77 +737,51 @@
       );
     }
 
-    /*
-      Clickable slides
-    */
-
     dishes.forEach(
       (dish, index) => {
-        dish.setAttribute(
-          "tabindex",
-          "0"
-        );
 
         dish.addEventListener(
           "click",
-          () => {
+          () =>
             activateDish(
               index,
               dishes
-            );
-          }
+            )
         );
 
         dish.addEventListener(
           "keydown",
           event => {
+
             if (
-              event.key ===
-                "ArrowRight"
+              event.key === "ArrowRight"
             ) {
-              event.preventDefault();
               changeDish(1);
             }
 
             if (
-              event.key ===
-                "ArrowLeft"
+              event.key === "ArrowLeft"
             ) {
-              event.preventDefault();
               changeDish(-1);
             }
 
-            if (
-              event.key === "Enter"
-            ) {
-              activateDish(
-                index,
-                dishes
-              );
-            }
           }
         );
+
       }
     );
 
-    /*
-      Touch swipe
-    */
 
-    let touchStartX = 0;
-    let touchStartY = 0;
+    /* Touch */
+
+    let startX = 0;
 
     showcase.addEventListener(
       "touchstart",
       event => {
-        const touch =
-          event.changedTouches[0];
-
-        touchStartX =
-          touch.clientX;
-
-        touchStartY =
-          touch.clientY;
+        startX =
+          event.changedTouches[0]
+            .clientX;
       },
       { passive: true }
     );
@@ -888,76 +789,26 @@
     showcase.addEventListener(
       "touchend",
       event => {
-        const touch =
-          event.changedTouches[0];
 
-        const deltaX =
-          touch.clientX -
-          touchStartX;
+        const endX =
+          event.changedTouches[0]
+            .clientX;
 
-        const deltaY =
-          touch.clientY -
-          touchStartY;
+        const distance =
+          endX - startX;
 
         if (
-          Math.abs(deltaX) > 50 &&
-          Math.abs(deltaX) >
-            Math.abs(deltaY)
+          Math.abs(distance) > 50
         ) {
           changeDish(
-            deltaX < 0 ? 1 : -1
+            distance < 0 ? 1 : -1
           );
         }
+
       },
       { passive: true }
     );
 
-    /*
-      Wheel
-    */
-
-    let wheelCooldown = false;
-
-    showcase.addEventListener(
-      "wheel",
-      event => {
-        if (wheelCooldown) return;
-
-        const rect =
-          showcase.getBoundingClientRect();
-
-        const visible =
-          rect.top <
-            state.viewportHeight * 0.8 &&
-          rect.bottom >
-            state.viewportHeight * 0.2;
-
-        if (!visible) return;
-
-        if (
-          Math.abs(event.deltaY) <
-          Math.abs(event.deltaX)
-        ) {
-          return;
-        }
-
-        wheelCooldown = true;
-
-        changeDish(
-          event.deltaY > 0
-            ? 1
-            : -1
-        );
-
-        setTimeout(
-          () => {
-            wheelCooldown = false;
-          },
-          500
-        );
-      },
-      { passive: true }
-    );
 
     activateDish(
       0,
@@ -969,24 +820,21 @@
 
   function changeDish(direction) {
     const dishes =
-      $$(
-        ".dish-slide"
-      );
+      $$(".dish-slide");
 
     if (!dishes.length) return;
 
     if (state.menuLocked) return;
 
-    const nextIndex =
+    state.menuIndex =
       (
         state.menuIndex +
         direction +
         dishes.length
-      ) %
-      dishes.length;
+      ) % dishes.length;
 
     activateDish(
-      nextIndex,
+      state.menuIndex,
       dishes
     );
 
@@ -996,51 +844,38 @@
       () => {
         state.menuLocked = false;
       },
-      450
+      350
     );
   }
 
 
   function activateDish(
     index,
-    dishes,
-    animate = true
+    dishes
   ) {
+
     state.menuIndex = index;
 
     dishes.forEach(
-      (dish, dishIndex) => {
-        dish.classList.remove(
+      (dish, i) => {
+
+        dish.classList.toggle(
           "is-active",
-          "is-before",
-          "is-after"
+          i === index
         );
 
-        if (
-          dishIndex === index
-        ) {
-          dish.classList.add(
-            "is-active"
-          );
-        } else if (
-          dishIndex < index
-        ) {
-          dish.classList.add(
-            "is-before"
-          );
-        } else {
-          dish.classList.add(
-            "is-after"
-          );
-        }
+        dish.classList.toggle(
+          "is-before",
+          i < index
+        );
 
-        /*
-          Useful CSS variables for
-          cinematic positioning.
-        */
+        dish.classList.toggle(
+          "is-after",
+          i > index
+        );
 
         let offset =
-          dishIndex - index;
+          i - index;
 
         if (
           offset >
@@ -1050,67 +885,26 @@
             dishes.length;
         }
 
-        if (
-          offset <
-          -dishes.length / 2
-        ) {
-          offset +=
-            dishes.length;
-        }
-
-        const abs =
-          Math.min(
-            Math.abs(offset),
-            3
-          );
-
         dish.style.setProperty(
           "--dish-offset",
           offset
         );
-
-        dish.style.setProperty(
-          "--dish-distance",
-          abs
-        );
-
-        dish.style.setProperty(
-          "--dish-index",
-          dishIndex
-        );
       }
     );
 
-    updateDishProgress(
-      index,
-      dishes.length
-    );
-  }
-
-
-  function updateDishProgress(
-    index,
-    total
-  ) {
     const progress =
       $("[data-dish-progress]");
 
-    if (!progress) return;
-
-    const percentage =
-      ((index + 1) / total) * 100;
-
-    progress.style.width =
-      `${percentage}%`;
-
-    progress.style.transform =
-      `scaleX(1)`;
+    if (progress) {
+      progress.style.width =
+        `${((index + 1) / dishes.length) * 100}%`;
+    }
   }
 
 
-  /* ============================================================
-     COCKTAIL CABINET
-  ============================================================ */
+  /* ==========================================================
+     COCKTAILS
+  ========================================================== */
 
   function initCocktails() {
     const cabinet =
@@ -1125,10 +919,6 @@
 
     cards.forEach(
       (card, index) => {
-        card.setAttribute(
-          "tabindex",
-          "0"
-        );
 
         card.addEventListener(
           "click",
@@ -1142,37 +932,28 @@
         card.addEventListener(
           "keydown",
           event => {
-            if (
-              event.key === "Enter"
-            ) {
-              activateCocktail(
-                index,
-                cards
-              );
-            }
 
             if (
-              event.key ===
-              "ArrowRight"
+              event.key === "ArrowRight"
             ) {
               changeCocktail(1);
             }
 
             if (
-              event.key ===
-              "ArrowLeft"
+              event.key === "ArrowLeft"
             ) {
               changeCocktail(-1);
             }
+
           }
         );
+
       }
     );
 
     activateCocktail(
       0,
-      cards,
-      false
+      cards
     );
   }
 
@@ -1185,16 +966,15 @@
 
     if (state.cocktailLocked) return;
 
-    const nextIndex =
+    state.cocktailIndex =
       (
         state.cocktailIndex +
         direction +
         cards.length
-      ) %
-      cards.length;
+      ) % cards.length;
 
     activateCocktail(
-      nextIndex,
+      state.cocktailIndex,
       cards
     );
 
@@ -1204,7 +984,7 @@
       () => {
         state.cocktailLocked = false;
       },
-      500
+      350
     );
   }
 
@@ -1213,49 +993,40 @@
     index,
     cards
   ) {
+
     state.cocktailIndex = index;
 
     cards.forEach(
-      (card, cardIndex) => {
-        card.classList.remove(
+      (card, i) => {
+
+        card.classList.toggle(
           "is-active",
-          "is-before",
-          "is-after"
+          i === index
         );
 
-        if (
-          cardIndex === index
-        ) {
-          card.classList.add(
-            "is-active"
-          );
-        } else if (
-          cardIndex < index
-        ) {
-          card.classList.add(
-            "is-before"
-          );
-        } else {
-          card.classList.add(
-            "is-after"
-          );
-        }
+        card.classList.toggle(
+          "is-before",
+          i < index
+        );
 
-        let offset =
-          cardIndex - index;
+        card.classList.toggle(
+          "is-after",
+          i > index
+        );
 
         card.style.setProperty(
           "--cocktail-offset",
-          offset
+          i - index
         );
+
       }
     );
   }
 
 
-  /* ============================================================
+  /* ==========================================================
      GALLERY
-  ============================================================ */
+  ========================================================== */
 
   function initGallery() {
     const gallery =
@@ -1263,15 +1034,13 @@
 
     if (!gallery) return;
 
-    /*
-      Mouse / pointer drag
-    */
-
     gallery.addEventListener(
       "pointerdown",
       event => {
+
         if (
-          event.pointerType === "mouse" &&
+          event.pointerType ===
+          "mouse" &&
           event.button !== 0
         ) {
           return;
@@ -1294,53 +1063,50 @@
             event.pointerId
           );
         } catch (_) {}
+
       }
     );
 
     gallery.addEventListener(
       "pointermove",
       event => {
+
         if (
           !state.galleryDragging
         ) {
           return;
         }
 
-        const distance =
-          event.clientX -
-          state.galleryStartX;
-
         gallery.scrollLeft =
           state.galleryStartScroll -
-          distance;
+          (
+            event.clientX -
+            state.galleryStartX
+          );
+
       }
     );
 
-    const stopGalleryDrag = () => {
-      state.galleryDragging = false;
+    const stop =
+      () => {
 
-      gallery.classList.remove(
-        "is-dragging"
-      );
-    };
+        state.galleryDragging =
+          false;
+
+        gallery.classList.remove(
+          "is-dragging"
+        );
+
+      };
 
     gallery.addEventListener(
       "pointerup",
-      stopGalleryDrag
+      stop
     );
 
     gallery.addEventListener(
       "pointercancel",
-      stopGalleryDrag
-    );
-
-    gallery.addEventListener(
-      "pointerleave",
-      () => {
-        if (!touchDevice) {
-          stopGalleryDrag();
-        }
-      }
+      stop
     );
   }
 
@@ -1351,18 +1117,13 @@
 
     if (!gallery) return;
 
-    const frames =
-      $$(".gallery-frame", gallery);
-
-    if (!frames.length) return;
-
     const rect =
       gallery.getBoundingClientRect();
 
     if (
-      rect.bottom < -100 ||
+      rect.bottom < 0 ||
       rect.top >
-        state.viewportHeight + 100
+        window.innerHeight
     ) {
       return;
     }
@@ -1370,11 +1131,11 @@
     const progress =
       clamp(
         (
-          state.viewportHeight -
+          window.innerHeight -
           rect.top
         ) /
         (
-          state.viewportHeight +
+          window.innerHeight +
           rect.height
         )
       );
@@ -1383,48 +1144,28 @@
       "--gallery-progress",
       progress
     );
-
-    frames.forEach(
-      (frame, index) => {
-        const depth =
-          parseFloat(
-            frame.dataset.galleryDepth ||
-            index + 1
-          );
-
-        const movement =
-          (
-            progress - 0.5
-          ) *
-          depth *
-          20;
-
-        frame.style.setProperty(
-          "--gallery-depth-y",
-          `${movement}px`
-        );
-      }
-    );
   }
 
 
-  /* ============================================================
+  /* ==========================================================
      DINNER
-  ============================================================ */
+  ========================================================== */
 
   function updateDinner() {
-    const dinner =
+    if (mobile) return;
+
+    const section =
       $('[data-scene="dinner"]');
 
-    if (!dinner) return;
+    if (!section) return;
 
     const rect =
-      dinner.getBoundingClientRect();
+      section.getBoundingClientRect();
 
     if (
       rect.bottom < 0 ||
       rect.top >
-        state.viewportHeight
+        window.innerHeight
     ) {
       return;
     }
@@ -1432,114 +1173,45 @@
     const progress =
       clamp(
         (
-          state.viewportHeight -
+          window.innerHeight -
           rect.top
         ) /
         (
-          state.viewportHeight +
+          window.innerHeight +
           rect.height
         )
       );
 
     const image =
-      $(".dinner-image", dinner);
-
-    const content =
-      $(".dinner-content", dinner);
+      $(".dinner-image", section);
 
     if (image) {
-      const scale =
-        1.12 -
-        progress * 0.12;
-
-      const y =
-        45 -
-        progress * 45;
-
       image.style.transform =
         `translate3d(
           0,
-          ${y}px,
+          ${(0.5 - progress) * 35}px,
           0
-        ) scale(${scale})`;
-    }
-
-    if (content) {
-      const y =
-        50 -
-        progress * 50;
-
-      content.style.transform =
-        `translate3d(
-          0,
-          ${y}px,
-          0
-        )`;
-
-      content.style.opacity =
-        clamp(
-          progress * 1.7
-        );
+        ) scale(1.04)`;
     }
   }
 
 
-  /* ============================================================
+  /* ==========================================================
      EVENTS
-  ============================================================ */
+  ========================================================== */
 
   function updateEvents() {
+    if (mobile) return;
+
     const section =
       $('[data-scene="events"]');
 
     if (!section) return;
 
-    const rect =
-      section.getBoundingClientRect();
-
-    if (
-      rect.bottom < 0 ||
-      rect.top >
-        state.viewportHeight
-    ) {
-      return;
-    }
-
-    const progress =
-      clamp(
-        (
-          state.viewportHeight -
-          rect.top
-        ) /
-        (
-          state.viewportHeight +
-          rect.height
-        )
-      );
-
     const image =
       $(".events-image", section);
 
-    if (image) {
-      image.style.transform =
-        `translate3d(
-          0,
-          ${(progress - 0.5) * -50}px,
-          0
-        ) scale(1.05)`;
-    }
-  }
-
-
-  /* ============================================================
-     VISIT
-  ============================================================ */
-
-  function updateVisit() {
-    const section =
-      $('[data-scene="visit"]');
-
-    if (!section) return;
+    if (!image) return;
 
     const rect =
       section.getBoundingClientRect();
@@ -1547,7 +1219,7 @@
     if (
       rect.bottom < 0 ||
       rect.top >
-        state.viewportHeight
+        window.innerHeight
     ) {
       return;
     }
@@ -1555,217 +1227,160 @@
     const progress =
       clamp(
         (
-          state.viewportHeight -
+          window.innerHeight -
           rect.top
         ) /
         (
-          state.viewportHeight +
+          window.innerHeight +
           rect.height
         )
       );
 
-    const background =
-      $(".visit-background", section);
-
-    if (background) {
-      background.style.transform =
-        `translate3d(
-          0,
-          ${(progress - 0.5) * -40}px,
-          0
-        ) scale(1.05)`;
-    }
-  }
-
-
-  /* ============================================================
-     MAGNETIC BUTTONS
-  ============================================================ */
-
-  function initMagneticButtons() {
-    if (touchDevice) return;
-
-    const buttons =
-      $$("[data-magnetic]");
-
-    buttons.forEach(button => {
-      button.addEventListener(
-        "pointermove",
-        event => {
-          const rect =
-            button.getBoundingClientRect();
-
-          const x =
-            event.clientX -
-            rect.left -
-            rect.width / 2;
-
-          const y =
-            event.clientY -
-            rect.top -
-            rect.height / 2;
-
-          button.style.transform =
-            `translate3d(
-              ${x * 0.14}px,
-              ${y * 0.14}px,
-              0
-            )`;
-        }
-      );
-
-      button.addEventListener(
-        "pointerleave",
-        () => {
-          button.style.transform =
-            "";
-        }
-      );
-    });
-  }
-
-
-  /* ============================================================
-     CUSTOM CURSOR
-  ============================================================ */
-
-  function initCursor() {
-    if (touchDevice) return;
-
-    const cursor =
-      $(".cursor-system");
-
-    if (!cursor) return;
-
-    document.body.classList.add(
-      "custom-cursor-enabled"
-    );
-
-    document.addEventListener(
-      "pointerover",
-      event => {
-        const interactive =
-          event.target.closest(
-            "a, button, .dish-slide, .cocktail-card"
-          );
-
-        if (interactive) {
-          cursor.classList.add(
-            "is-hovering"
-          );
-        }
-      }
-    );
-
-    document.addEventListener(
-      "pointerout",
-      event => {
-        const interactive =
-          event.target.closest(
-            "a, button, .dish-slide, .cocktail-card"
-          );
-
-        if (interactive) {
-          cursor.classList.remove(
-            "is-hovering"
-          );
-        }
-      }
-    );
-  }
-
-
-  function updateCursor() {
-    if (touchDevice) return;
-
-    const cursor =
-      $(".cursor-system");
-
-    if (!cursor) return;
-
-    const targetX =
-      state.mouseX *
-      state.viewportWidth +
-      state.viewportWidth / 2;
-
-    const targetY =
-      state.mouseY *
-      state.viewportHeight +
-      state.viewportHeight / 2;
-
-    state.cursorX =
-      lerp(
-        state.cursorX,
-        targetX,
-        0.16
-      );
-
-    state.cursorY =
-      lerp(
-        state.cursorY,
-        targetY,
-        0.16
-      );
-
-    cursor.style.transform =
+    image.style.transform =
       `translate3d(
-        ${state.cursorX}px,
-        ${state.cursorY}px,
+        0,
+        ${(progress - 0.5) * -30}px,
         0
       )`;
   }
 
 
-  /* ============================================================
-     SMOOTH INTERNAL LINKS
-  ============================================================ */
+  /* ==========================================================
+     VISIT
+  ========================================================== */
 
-  function initSmoothLinks() {
-    $$(
-      'a[href^="#"]'
-    ).forEach(link => {
-      link.addEventListener(
-        "click",
-        event => {
-          const href =
-            link.getAttribute(
-              "href"
-            );
+  function updateVisit() {
+    if (mobile) return;
 
-          if (
-            !href ||
-            href === "#"
-          ) {
-            return;
-          }
+    const section =
+      $('[data-scene="visit"]');
 
-          const target =
-            document.querySelector(
-              href
-            );
+    if (!section) return;
 
-          if (!target) return;
+    const background =
+      $(".visit-background", section);
 
-          event.preventDefault();
+    if (!background) return;
 
-          target.scrollIntoView({
-            behavior:
-              reducedMotion
-                ? "auto"
-                : "smooth",
-            block: "start"
-          });
-        }
+    const rect =
+      section.getBoundingClientRect();
+
+    if (
+      rect.bottom < 0 ||
+      rect.top >
+        window.innerHeight
+    ) {
+      return;
+    }
+
+    const progress =
+      clamp(
+        (
+          window.innerHeight -
+          rect.top
+        ) /
+        (
+          window.innerHeight +
+          rect.height
+        )
       );
-    });
+
+    background.style.transform =
+      `translate3d(
+        0,
+        ${(progress - 0.5) * -25}px,
+        0
+      )`;
   }
 
 
-  /* ============================================================
-     KEYBOARD
-  ============================================================ */
+  /* ==========================================================
+     MAGNETIC BUTTONS
+  ========================================================== */
 
-  function initKeyboard() {
+  function initMagnetic() {
+    if (touch || mobile) return;
+
+    $$("[data-magnetic]").forEach(
+      button => {
+
+        button.addEventListener(
+          "pointermove",
+          event => {
+
+            const rect =
+              button.getBoundingClientRect();
+
+            const x =
+              event.clientX -
+              rect.left -
+              rect.width / 2;
+
+            const y =
+              event.clientY -
+              rect.top -
+              rect.height / 2;
+
+            button.style.transform =
+              `translate3d(
+                ${x * 0.10}px,
+                ${y * 0.10}px,
+                0
+              )`;
+          }
+        );
+
+        button.addEventListener(
+          "pointerleave",
+          () => {
+            button.style.transform = "";
+          }
+        );
+
+      }
+    );
+  }
+
+
+  /* ==========================================================
+     MOBILE MENU
+  ========================================================== */
+
+  function initMobileNavigation() {
+    const toggle =
+      $("[data-menu-toggle]");
+
+    const menu =
+      $("[data-mobile-menu]");
+
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener(
+      "click",
+      () => {
+
+        const open =
+          document.body.classList.toggle(
+            "mobile-menu-open"
+          );
+
+        toggle.setAttribute(
+          "aria-expanded",
+          String(open)
+        );
+
+      }
+    );
+
+    $$("a", menu).forEach(
+      link => {
+        link.addEventListener(
+          "click",
+          closeMobileMenu
+        );
+      }
+    );
+
     document.addEventListener(
       "keydown",
       event => {
@@ -1774,134 +1389,195 @@
         ) {
           closeMobileMenu();
         }
-
-        /*
-          Menu keyboard navigation
-        */
-
-        if (
-          event.key !== "ArrowLeft" &&
-          event.key !== "ArrowRight"
-        ) {
-          return;
-        }
-
-        const menu =
-          $('[data-scene="menu"]');
-
-        if (!menu) return;
-
-        const rect =
-          menu.getBoundingClientRect();
-
-        const visible =
-          rect.top <
-            state.viewportHeight &&
-          rect.bottom > 0;
-
-        if (!visible) return;
-
-        if (
-          event.key === "ArrowLeft"
-        ) {
-          changeDish(-1);
-        }
-
-        if (
-          event.key === "ArrowRight"
-        ) {
-          changeDish(1);
-        }
       }
     );
   }
 
 
-  /* ============================================================
-     IMAGES
-  ============================================================ */
+  function closeMobileMenu() {
+    const toggle =
+      $("[data-menu-toggle]");
+
+    document.body.classList.remove(
+      "mobile-menu-open"
+    );
+
+    if (toggle) {
+      toggle.setAttribute(
+        "aria-expanded",
+        "false"
+      );
+    }
+  }
+
+
+  /* ==========================================================
+     SMOOTH LINKS
+  ========================================================== */
+
+  function initSmoothLinks() {
+    $$(
+      'a[href^="#"]'
+    ).forEach(
+      link => {
+
+        link.addEventListener(
+          "click",
+          event => {
+
+            const href =
+              link.getAttribute(
+                "href"
+              );
+
+            if (
+              !href ||
+              href === "#"
+            ) {
+              return;
+            }
+
+            const target =
+              document.querySelector(
+                href
+              );
+
+            if (!target) return;
+
+            event.preventDefault();
+
+            target.scrollIntoView({
+              behavior:
+                reducedMotion
+                  ? "auto"
+                  : "smooth"
+            });
+
+          }
+        );
+
+      }
+    );
+  }
+
+
+  /* ==========================================================
+     IMAGE LOADING
+  ========================================================== */
 
   function initImages() {
     const images =
       $$("img");
 
-    images.forEach(image => {
-      image.setAttribute(
-        "decoding",
-        "async"
-      );
+    images.forEach(
+      image => {
 
-      if (image.complete) {
-        image.classList.add(
-          "is-loaded"
-        );
+        /*
+          Browser-native decoding.
+        */
 
-        return;
-      }
+        image.decoding =
+          "async";
 
-      image.addEventListener(
-        "load",
-        () => {
+        /*
+          Mark loaded images.
+        */
+
+        if (image.complete) {
           image.classList.add(
             "is-loaded"
           );
-        },
-        { once: true }
-      );
-    });
+        } else {
+          image.addEventListener(
+            "load",
+            () => {
+              image.classList.add(
+                "is-loaded"
+              );
+            },
+            { once: true }
+          );
+        }
+
+        /*
+          If an image fails, expose
+          the problem in console.
+        */
+
+        image.addEventListener(
+          "error",
+          () => {
+            console.warn(
+              "Morgan's image failed:",
+              image.src
+            );
+
+            image.classList.add(
+              "is-image-error"
+            );
+          },
+          { once: true }
+        );
+      }
+    );
   }
 
 
-  /* ============================================================
+  /* ==========================================================
+     VISIBILITY
+  ========================================================== */
+
+  function initVisibility() {
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+
+        state.visible =
+          !document.hidden;
+
+        if (state.visible) {
+          requestRender();
+        }
+
+      }
+    );
+  }
+
+
+  /* ==========================================================
      RESIZE
-  ============================================================ */
+  ========================================================== */
 
   function initResize() {
+    let timer = null;
+
     window.addEventListener(
       "resize",
       () => {
-        clearTimeout(
-          state.resizeTimer
-        );
 
-        state.resizeTimer =
+        clearTimeout(timer);
+
+        timer =
           setTimeout(
             () => {
-              updateViewport();
-              requestFrame();
+              setViewport();
+              requestRender();
             },
-            100
+            150
           );
+
       },
       { passive: true }
     );
   }
 
 
-  /* ============================================================
-     VISIBILITY
-  ============================================================ */
-
-  function initVisibility() {
-    document.addEventListener(
-      "visibilitychange",
-      () => {
-        state.visible =
-          !document.hidden;
-
-        if (state.visible) {
-          requestFrame();
-        }
-      }
-    );
-  }
-
-
-  /* ============================================================
-     INITIALIZE
-  ============================================================ */
+  /* ==========================================================
+     START
+  ========================================================== */
 
   function init() {
+
     document.body.classList.add(
       "js-enabled"
     );
@@ -1910,16 +1586,15 @@
       Loader
     */
 
-    initCurtain();
+    initLoader();
 
     /*
       Navigation
     */
 
     initHeader();
-    initMobileMenu();
+    initMobileNavigation();
     initSmoothLinks();
-    initKeyboard();
 
     /*
       Scene system
@@ -1933,15 +1608,16 @@
     */
 
     initPointer();
+    initDepth();
 
     /*
       Story
     */
 
-    initTableStory();
+    initTable();
 
     /*
-      Food / menu
+      Menu
     */
 
     initMenu();
@@ -1959,50 +1635,46 @@
     initGallery();
 
     /*
-      Interaction
+      Buttons
     */
 
-    initMagneticButtons();
+    initMagnetic();
+
+    /*
+      Cursor
+    */
+
     initCursor();
 
     /*
-      Images / browser
+      Images
     */
 
     initImages();
-    initResize();
+
+    /*
+      Browser
+    */
+
     initVisibility();
+    initResize();
 
     /*
-      First render
+      Initial render only.
     */
 
-    requestFrame();
-
-    /*
-      Re-render once after initial
-      browser layout settles.
-    */
-
-    requestAnimationFrame(() => {
-      requestFrame();
-    });
+    requestRender();
 
     console.log(
-      "%c MORGAN'S ON MAIN ",
+      "%c MORGAN'S ON MAIN — FAST MODE ",
       "background:#111;color:#f5eee5;padding:8px 14px;font-weight:bold;"
-    );
-
-    console.log(
-      "%c CINEMATIC EXPERIENCE ENGINE ",
-      "color:#888;"
     );
   }
 
 
-  /* ============================================================
-     START
-  ============================================================ */
+  /* ==========================================================
+     BOOT
+  ========================================================== */
 
   if (
     document.readyState ===
